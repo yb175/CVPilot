@@ -1,13 +1,12 @@
 version: 1
 
 reviews:
-  profile: strict
+  profile: assertive
 
   request_changes_workflow: true
   high_level_summary: true
-  auto_title: true
+  auto_title_placeholder: "@coderabbitai"
 
-  # Focus areas for review
   path_filters:
     - "!node_modules/**"
     - "!dist/**"
@@ -16,74 +15,74 @@ reviews:
   tools:
     eslint:
       enabled: true
-    prettier:
-      enabled: true
 
-  instructions: |
-    You are reviewing a production-grade Node.js + TypeScript backend.
+  path_instructions:
+    - path: "**/*.{ts,tsx,js,jsx}"
+      instructions: |
+        You are reviewing a production-grade Node.js + TypeScript backend.
 
-    Your job is to ensure:
-    - Clean, maintainable, and scalable code
-    - No security vulnerabilities
-    - No bad practices that would fail in production
+        Your job is to ensure:
+        - Clean, maintainable, and scalable code
+        - No security vulnerabilities
+        - No bad practices that would fail in production
 
-    Enforce the following strictly:
+        Enforce the following strictly:
 
-    1. Security:
-       - No hardcoded secrets, API keys, tokens, or credentials
-       - No exposure of sensitive data in logs or responses
-       - Proper validation and sanitization of inputs
-       - Safe database queries (avoid injection risks)
-       - Use environment variables for secrets
+        1. Security:
+           - No hardcoded secrets, API keys, tokens, or credentials
+           - No exposure of sensitive data in logs or responses
+           - Proper validation and sanitization of inputs
+           - Safe database queries (avoid injection risks)
+           - Use environment variables for secrets
 
-    2. Logging:
-       - No console.log, console.debug, console.error in production code
-       - Use a proper logging library (e.g., pino, winston)
-       - Logs should not expose sensitive data
+        2. Logging:
+           - No console.log, console.debug, console.error in production code
+           - Use a proper logging library (e.g., pino, winston)
+           - Logs should not expose sensitive data
 
-    3. Prisma & Database:
-       - Ensure Prisma queries are efficient and safe
-       - Avoid N+1 query patterns
-       - Use proper error handling for DB operations
-       - No direct raw queries unless justified and safe
+        3. Prisma & Database:
+           - Ensure Prisma queries are efficient and safe
+           - Avoid N+1 query patterns
+           - Use proper error handling for DB operations
+           - No direct raw queries unless justified and safe
 
-    4. TypeScript Quality:
-       - No use of "any" unless absolutely necessary
-       - Proper typing for all functions and responses
-       - Avoid implicit any
-       - Ensure null/undefined safety
+        4. TypeScript Quality:
+           - No use of "any" unless absolutely necessary
+           - Proper typing for all functions and responses
+           - Avoid implicit any
+           - Ensure null/undefined safety
 
-    5. Code Quality:
-       - No dead code or commented-out code
-       - No unused imports or variables
-       - Functions should be small and focused
-       - Use meaningful variable and function names
+        5. Code Quality:
+           - No dead code or commented-out code
+           - No unused imports or variables
+           - Functions should be small and focused
+           - Use meaningful variable and function names
 
-    6. Architecture:
-       - Separation of concerns (controllers, services, db)
-       - No business logic inside route handlers
-       - Reusable and modular design
+        6. Architecture:
+           - Separation of concerns (controllers, services, db)
+           - No business logic inside route handlers
+           - Reusable and modular design
 
-    7. Production Readiness:
-       - Proper error handling (no unhandled promises)
-       - No synchronous blocking operations
-       - Configs should come from environment variables
-       - Ensure compatibility with build (dist) output
+        7. Production Readiness:
+           - Proper error handling (no unhandled promises)
+           - No synchronous blocking operations
+           - Configs should come from environment variables
+           - Ensure compatibility with build (dist) output
 
-    8. ESM & Build:
-       - All imports should work after TypeScript build
-       - No broken relative paths after compilation
-       - Avoid dev-only assumptions (like ts-node paths)
+        8. ESM & Build:
+           - All imports should work after TypeScript build
+           - No broken relative paths after compilation
+           - Avoid dev-only assumptions (like ts-node paths)
 
-    9. General:
-       - Suggest improvements, not just issues
-       - Be concise but precise
-       - Prioritize high-impact issues over nitpicks
+        9. General:
+           - Suggest improvements, not just issues
+           - Be concise but precise
+           - Prioritize high-impact issues over nitpicks
 
-    If you find:
-    - Security issue → MUST request changes
-    - Token/secret leak → MUST request changes
-    - console.log → MUST request changes
+        If you find:
+        - Security issue → MUST request changes
+        - Token/secret leak → MUST request changes
+        - console.log → MUST request changes
 
-    Otherwise:
-    - Suggest improvements clearly with reasoning
+        Otherwise:
+        - Suggest improvements clearly with reasoning
