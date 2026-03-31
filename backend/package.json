@@ -2,7 +2,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "tsx server.ts",
-		"build": "tsc --project tsconfig.json",
+		"build": "tsc --project tsconfig.json && node ./scripts/fix-prisma-imports.mjs",
 		"start": "node ./dist/server.js"
 	},
 	"dependencies": {
