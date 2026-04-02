@@ -23,6 +23,8 @@ jobs :
         run: |
           npm run start &
           sleep 5
+      - name : Generate Prisma client
+        run: npx prisma generate
       - name: Verify server is running
         run: |
           for i in {1..5}; do
