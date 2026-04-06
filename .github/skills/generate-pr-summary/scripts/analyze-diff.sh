@@ -133,6 +133,7 @@ echo "✅ Summary generated! Copy the 'Summary:' section to your PR description.
 echo ""
 echo "📊 Statistics:"
 COMMIT_COUNT=$(git log "$BASE_BRANCH"..HEAD --oneline | wc -l)
+LINES_ADDED=$(git diff "$BASE_BRANCH"..HEAD --numstat | awk '{sum += $1} END {print sum + 0}')
 echo "   • Commits: $COMMIT_COUNT"
 echo "   • Files changed: $(echo "$CHANGED_FILES" | wc -l)"
-echo "   • Lines added: $(git diff "$BASE_BRANCH"..HEAD --stat | tail -1 | awk '{print $4}')"
+echo "   • Lines added: $LINES_ADDED"

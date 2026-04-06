@@ -54,7 +54,9 @@ if ([string]::IsNullOrEmpty($CommitType)) {
         
         # Analyze diff for clues
         $Diff = git diff --cached $File 2>$null
-    $DiffLower = if ($Diff) { ($Diff -join ' ').ToLower() } else { '' }
+        $DiffLower = if ($Diff) { ($Diff -join ' ').ToLower() } else { '' }
+        
+        if ($DiffLower -match '(perf|performance|optimize|speed|cache)') {
             $HasPerf = $true
         }
         if ($DiffLower -match '(fix|bug|issue|error|crash)') {
