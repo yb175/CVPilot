@@ -98,7 +98,7 @@ fi
 
 # Validate commit type
 VALID_TYPES="feat|fix|refactor|test|docs|perf|ci|chore|style"
-if ! echo "$VALID_TYPES" | grep -q "$COMMIT_TYPE"; then
+if ! echo "$COMMIT_TYPE" | grep -E -q "^(${VALID_TYPES})$"; then
     echo -e "${RED}❌ Invalid commit type: $COMMIT_TYPE${NC}"
     echo "   Valid types: feat, fix, refactor, test, docs, perf, ci, chore, style"
     exit 1
@@ -187,7 +187,7 @@ echo ""
 
 # Show detailed file changes
 echo -e "${BLUE}🔄 Detailed changes:${NC}"
-git diff --cached --stat | head -n -1 | sed 's/^/   /'
+git diff --cached --stat 2>/dev/null | sed '$d' | sed 's/^/   /'
 echo ""
 
 echo -e "${YELLOW}💾 To commit with this message:${NC}"

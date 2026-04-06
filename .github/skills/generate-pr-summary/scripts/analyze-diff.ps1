@@ -11,21 +11,20 @@ $ErrorActionPreference = "Stop"
 
 # Configuration
 $MaxBulletPoints = 5
-$MaxWordsPerPoint = 15
 
 # Detect base branch
 if ([string]::IsNullOrEmpty($BaseBranch)) {
     # Try upstream/main first, fallback to origin/main
-    try {
-        $null = git rev-parse upstream/main 2>$null
+    git rev-parse upstream/main 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
         $BaseBranch = "upstream/main"
     }
-    catch {
-        try {
-            $null = git rev-parse origin/main 2>$null
+    else {
+        git rev-parse origin/main 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
             $BaseBranch = "origin/main"
         }
-        catch {
+        else {
             Write-Host "❌ Error: Could not find base branch. Please specify: .\analyze-diff.ps1 <branch-name>"
             Write-Host "   Available remote branches:"
             git branch -r | Select-Object -First 10
@@ -36,23 +35,14 @@ if ([string]::IsNullOrEmpty($BaseBranch)) {
 
 # Fetch latest updates
 Write-Host "📡 Fetching latest from remotes..."
-try {
-    git fetch upstream 2>$null
-}
-catch {
-    try {
-        git fetch origin 2>$null
-    }
-    catch {
-        # Continue anyway
-    }
+git fetch upstream 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    git fetch origin 2>$null | Out-Null
 }
 
 # Verify branch exists
-try {
-    $null = git rev-parse $BaseBranch 2>$null
-}
-catch {
+git rev-parse $BaseBranch 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Error: Branch '$BaseBranch' not found"
     exit 1
 }
@@ -100,6 +90,9 @@ foreach ($File in $ChangedFiles) {
     }
     elseif ($exists_in_head) {
         Write-Host "   • Added: $File"
+    }
+    elseif ($exists_in_base -and -not $exists_in_head) {
+        Write-Host "   • Deleted: $File"
     }
 }
 

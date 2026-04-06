@@ -9,7 +9,6 @@ set -e
 
 # Configuration
 MAX_BULLET_POINTS=5
-MAX_WORDS_PER_POINT=15
 
 # Detect base branch
 BASE_BRANCH="${1}"
@@ -70,6 +69,8 @@ echo "$CHANGED_FILES" | while read -r file; do
   if git show "$BASE_BRANCH:$file" >/dev/null 2>&1; then
     if git show HEAD:"$file" >/dev/null 2>&1; then
       echo "   • Modified: $file"
+    else
+      echo "   • Deleted: $file"
     fi
   else
     echo "   • Added: $file"
@@ -108,22 +109,22 @@ echo "Summary:"
 POINT_COUNT=0
 
 [ "$has_feature" = true ] && [ $POINT_COUNT -lt $MAX_BULLET_POINTS ] && \
-  echo "- Added new features and functionality" && ((POINT_COUNT++))
+  echo "- Added new features and functionality" && POINT_COUNT=$((POINT_COUNT + 1))
 
 [ "$has_bugfix" = true ] && [ $POINT_COUNT -lt $MAX_BULLET_POINTS ] && \
-  echo "- Fixed bugs and resolved issues" && ((POINT_COUNT++))
+  echo "- Fixed bugs and resolved issues" && POINT_COUNT=$((POINT_COUNT + 1))
 
 [ "$has_refactor" = true ] && [ $POINT_COUNT -lt $MAX_BULLET_POINTS ] && \
-  echo "- Refactored code for maintainability and performance" && ((POINT_COUNT++))
+  echo "- Refactored code for maintainability and performance" && POINT_COUNT=$((POINT_COUNT + 1))
 
 [ "$has_test" = true ] && [ $POINT_COUNT -lt $MAX_BULLET_POINTS ] && \
-  echo "- Added and improved tests" && ((POINT_COUNT++))
+  echo "- Added and improved tests" && POINT_COUNT=$((POINT_COUNT + 1))
 
 [ "$has_config" = true ] && [ $POINT_COUNT -lt $MAX_BULLET_POINTS ] && \
-  echo "- Updated configuration and dependencies" && ((POINT_COUNT++))
+  echo "- Updated configuration and dependencies" && POINT_COUNT=$((POINT_COUNT + 1))
 
 [ "$has_docs" = true ] && [ $POINT_COUNT -lt $MAX_BULLET_POINTS ] && \
-  echo "- Updated documentation" && ((POINT_COUNT++))
+  echo "- Updated documentation" && POINT_COUNT=$((POINT_COUNT + 1))
 
 [ $POINT_COUNT -eq 0 ] && echo "- Code changes and improvements"
 

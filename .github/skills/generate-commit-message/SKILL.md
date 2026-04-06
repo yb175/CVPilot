@@ -71,7 +71,7 @@ The skill uses platform-specific scripts to:
 
 The output follows this format:
 
-```
+```text
 📝 Analyzing staged changes...
 
 📄 Staged files:
@@ -106,7 +106,7 @@ git commit
 
 ## Conventional Commit Format
 
-```
+```text
 <type>[optional scope]: <description>
 
 [optional body]

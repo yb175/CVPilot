@@ -13,8 +13,8 @@ $ErrorActionPreference = "Stop"
 $MaxDescLength = 50
 
 # Check if there are staged changes
-$StagedFiles = git diff --cached --name-only 2>$null
-$StagedCount = ($StagedFiles | Measure-Object -Line).Lines
+$StagedFiles = @(git diff --cached --name-only 2>$null)
+$StagedCount = $StagedFiles.Count
 
 if ($StagedCount -eq 0) {
     Write-Host "❌ Error: No staged changes found" -ForegroundColor Red
@@ -54,9 +54,7 @@ if ([string]::IsNullOrEmpty($CommitType)) {
         
         # Analyze diff for clues
         $Diff = git diff --cached $File 2>$null
-        $DiffLower = $Diff -join ' ' | ForEach-Object { $_.ToLower() }
-        
-        if ($DiffLower -match '(perf|performance|optimize|speed|cache)') {
+    $DiffLower = if ($Diff) { ($Diff -join ' ').ToLower() } else { '' }
             $HasPerf = $true
         }
         if ($DiffLower -match '(fix|bug|issue|error|crash)') {
@@ -173,8 +171,13 @@ $Deletions = 0
 foreach ($Line in $DiffNumStat) {
     $Parts = $Line -split '\s+' | Where-Object { $_ }
     if ($Parts.Count -ge 2) {
-        [int]$Insertions += [int]$Parts[0]
-        [int]$Deletions += [int]$Parts[1]
+        # Safe parsing for binary files (handle '-' and non-numeric values)
+        if ([int]::TryParse($Parts[0], [ref]$null)) {
+            $Insertions += [int]$Parts[0]
+        }
+        if ([int]::TryParse($Parts[1], [ref]$null)) {
+            $Deletions += [int]$Parts[1]
+        }
     }
 }
 

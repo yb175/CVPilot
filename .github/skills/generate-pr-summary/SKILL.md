@@ -38,21 +38,21 @@ The skill uses platform-specific scripts to:
 **For Linux/macOS users**, use [analyze-diff.sh](./scripts/analyze-diff.sh):
 ```bash
 # Auto-detect base branch
-./analyze-diff.sh
+.github/skills/generate-pr-summary/scripts/analyze-diff.sh
 
 # Or specify a custom target branch
-./analyze-diff.sh main
-./analyze-diff.sh staging
+.github/skills/generate-pr-summary/scripts/analyze-diff.sh main
+.github/skills/generate-pr-summary/scripts/analyze-diff.sh staging
 ```
 
 **For Windows users**, use [analyze-diff.ps1](./scripts/analyze-diff.ps1):
 ```powershell
 # Auto-detect base branch
-.\analyze-diff.ps1
+.github/skills/generate-pr-summary/scripts/analyze-diff.ps1
 
 # Or specify a custom target branch
-.\analyze-diff.ps1 main
-.\analyze-diff.ps1 staging
+.github/skills/generate-pr-summary/scripts/analyze-diff.ps1 main
+.github/skills/generate-pr-summary/scripts/analyze-diff.ps1 staging
 ```
 
 > **Note for Windows**: If you encounter execution policy errors, run:
@@ -65,7 +65,7 @@ The skill uses platform-specific scripts to:
 
 The output follows this format:
 
-```
+```text
 Summary:
 - <change 1: under 15 words, human-friendly>
 - <change 2: under 15 words>
@@ -85,7 +85,7 @@ Use the generated summary as-is or customize further for your PR template.
 
 ## Key Features
 
-✅ **Smart filtering**: Ignores formatting, whitespace, and merge commits  
+✅ **Smart filtering**: Ignores formatting and whitespace  
 ✅ **Intent detection**: Identifies bug fixes, features, refactors, tests, config changes  
 ✅ **Auto base detection**: Tries upstream, falls back to origin  
 ✅ **Grouped output**: Groups related changes logically  
@@ -93,7 +93,7 @@ Use the generated summary as-is or customize further for your PR template.
 
 ## Example Output
 
-```
+```text
 Summary:
 - Added user preference schema for personalized recommendations
 - Fixed race condition in event volunteer creation
