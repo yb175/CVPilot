@@ -3,9 +3,6 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { ClerkProvider } from '@clerk/react'
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!clerkPublishableKey) {
@@ -17,7 +14,5 @@ createRoot(document.getElementById('root')!).render(
     <ClerkProvider publishableKey={clerkPublishableKey}>
       <App />
     </ClerkProvider>
-  </StrictMode>,
-)
   </StrictMode>,
 )
