@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-concurrent:
+concurrency:
   group: deploy-to-production
   cancel-in-progress: true
 jobs:
