@@ -23,6 +23,13 @@ jobs:
           passphrase: ${{ secrets.DO_PASSPHRASE }}
           script: |
             set -e
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use --lts
+            echo "checking node version..."
+            node --version
+            npm --version
+            
             echo "Testing SSH connection to remote server..."
             hostname
             whoami
@@ -38,7 +45,7 @@ jobs:
             npx prisma generate
             npx prisma migrate deploy
             npm run build
-            pm2 reload cvpilot-backend
+            pm2 reload cvpilot-backend ||  pm2 start npm --name cvpilot-backend -- start
             cd ..
             echo "Deploying frontend..."
             # ===== Frontend =====
