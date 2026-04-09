@@ -11,7 +11,10 @@ on:
 jobs:
   Prisma-Migration-Check:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
     services:
       postgres:
         image: postgres:15
@@ -22,7 +25,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready"
+          --health-cmd="pg_isready -U postgres -d testdb -h localhost"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -45,7 +48,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Generate Prisma client
         run: npx prisma generate
