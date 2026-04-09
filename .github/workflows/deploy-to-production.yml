@@ -5,7 +5,9 @@ on:
   push:
     branches:
       - main
-
+concurrent:
+  group: deploy-to-production
+  cancel-in-progress: true
 jobs:
   test-ssh:
     runs-on: ubuntu-latest
@@ -25,21 +27,24 @@ jobs:
             hostname
             whoami
             cd ~/CVPilot
-            git pull origin main
+            git fetch --prune origin
+            git checkout --force main
+            git reset --hard origin/main
+            git clean -fd
             echo "Deploying backend..."
             # ===== Backend =====
             cd backend
-            npm install 
+            npm ci
             npx prisma generate
             npx prisma migrate deploy
+            npm run build
             pm2 reload cvpilot-backend
             cd ..
             echo "Deploying frontend..."
             # ===== Frontend =====
             cd frontend
-            npm install
+            npm ci
             npm run build
             sudo mkdir -p /var/www/CVPilot/
-            sudo rm -rf /var/www/CVPilot/*
-            sudo cp -r dist/* /var/www/CVPilot/
+            sudo rsync -a --delete dist/ /var/www/CVPilot/
             echo "Deployment complete!"
