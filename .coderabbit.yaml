@@ -1,7 +1,7 @@
 version: 1
 
 reviews:
-  profile: assertive
+  profile: chill
 
   request_changes_workflow: true
   high_level_summary: true
@@ -17,72 +17,73 @@ reviews:
       enabled: true
 
   path_instructions:
-    - path: "**/*.{ts,tsx,js,jsx}"
+    - path: "backend/**/*.{ts,js}"
       instructions: |
-        You are reviewing a production-grade Node.js + TypeScript backend.
+        You are reviewing a Node.js + TypeScript + Express + Prisma backend in an MVP development workflow.
 
-        Your job is to ensure:
-        - Clean, maintainable, and scalable code
-        - No security vulnerabilities
-        - No bad practices that would fail in production
+        ONLY flag issues that fall into one of these HIGH-IMPACT categories:
+        1. Security vulnerabilities (hardcoded secrets, API keys, tokens, credentials, input injection risks, sensitive data exposure)
+        2. Incorrect logic or data handling (wrong business logic, data corruption risk, incorrect query behavior)
+        3. Crashes or runtime failures (unhandled promise rejections, missing error handling, blocking sync ops on critical paths)
+        4. Breaking functionality (broken imports after build, ESM/CJS incompatibility, missing env vars that will crash at startup)
 
-        Enforce the following strictly:
+        DO NOT comment on:
+        - Code style or formatting
+        - Naming conventions or variable/function names
+        - Minor optimizations or performance improvements that don't affect correctness
+        - Refactoring suggestions or code organization preferences
+        - Non-blocking best practices or "nice to have" improvements
+        - Dead code, unused imports, or commented-out code (unless it exposes secrets)
+        - Logging library preferences (only flag if secrets are logged)
+        - Prisma patterns unless they cause incorrect results or crashes (e.g. silent data loss, N+1 causing timeout in production)
 
-        1. Security:
-           - No hardcoded secrets, API keys, tokens, or credentials
-           - No exposure of sensitive data in logs or responses
-           - Proper validation and sanitization of inputs
-           - Safe database queries (avoid injection risks)
-           - Use environment variables for secrets
+        Be concise. One short sentence per issue. No explanations of why best practices exist.
 
-        2. Logging:
-           - No console.log, console.debug, console.error in production code
-           - Use a proper logging library (e.g., pino, winston)
-           - Logs should not expose sensitive data
+        MUST request changes if:
+        - Hardcoded secret, token, API key, or credential is found
+        - Security vulnerability that can be exploited
+        - Unhandled async error that will crash the process
 
-        3. Prisma & Database:
-           - Ensure Prisma queries are efficient and safe
-           - Avoid N+1 query patterns
-           - Use proper error handling for DB operations
-           - No direct raw queries unless justified and safe
+    - path: "frontend/src/**/*.{ts,tsx,js,jsx}"
+      instructions: |
+        You are reviewing a React 19 + TypeScript + Tailwind CSS frontend in an MVP development workflow.
 
-        4. TypeScript Quality:
-           - No use of "any" unless absolutely necessary
-           - Proper typing for all functions and responses
-           - Avoid implicit any
-           - Ensure null/undefined safety
+        ONLY flag issues that fall into one of these HIGH-IMPACT categories:
+        1. Security vulnerabilities (hardcoded secrets, tokens, XSS risks via dangerouslySetInnerHTML, exposed credentials)
+        2. Broken or incorrect React behavior (missing keys causing state corruption, infinite render loops, stale closures causing incorrect data, missing dependencies in useEffect that cause bugs)
+        3. Runtime crashes (calling methods on null/undefined, missing required props that will throw, unhandled promise rejections in async handlers)
+        4. Incorrect TypeScript that hides real bugs (unsafe type assertions that bypass null checks, incorrect prop types that will cause runtime errors)
 
-        5. Code Quality:
-           - No dead code or commented-out code
-           - No unused imports or variables
-           - Functions should be small and focused
-           - Use meaningful variable and function names
+        DO NOT comment on:
+        - Code style or formatting
+        - Component naming or file organization
+        - Tailwind class order or style preferences
+        - Accessibility improvements (unless it causes a crash)
+        - Refactoring, component decomposition, or "cleaner" patterns
+        - Minor optimizations (memoization, avoiding re-renders unless severe)
+        - Using inline styles vs utility classes
+        - Non-blocking best practices
 
-        6. Architecture:
-           - Separation of concerns (controllers, services, db)
-           - No business logic inside route handlers
-           - Reusable and modular design
+        Be concise. One short sentence per issue. No explanations of why best practices exist.
 
-        7. Production Readiness:
-           - Proper error handling (no unhandled promises)
-           - No synchronous blocking operations
-           - Configs should come from environment variables
-           - Ensure compatibility with build (dist) output
+        MUST request changes if:
+        - Hardcoded secret, token, or API key is found in frontend code
+        - Security vulnerability that can be exploited (e.g. XSS)
 
-        8. ESM & Build:
-           - All imports should work after TypeScript build
-           - No broken relative paths after compilation
-           - Avoid dev-only assumptions (like ts-node paths)
+    - path: "backend/prisma/**/*.prisma"
+      instructions: |
+        You are reviewing a Prisma schema in an MVP development workflow.
 
-        9. General:
-           - Suggest improvements, not just issues
-           - Be concise but precise
-           - Prioritize high-impact issues over nitpicks
+        ONLY flag issues that fall into one of these HIGH-IMPACT categories:
+        1. Missing indexes on foreign keys or fields used in WHERE/ORDER BY that will cause severe query performance issues at scale
+        2. Cascade delete behavior that could silently wipe critical data
+        3. Schema changes that are backwards-incompatible and will break the running application (e.g. non-nullable field added without default)
+        4. Ambiguous nullable fields where null vs missing has different semantics and could cause data bugs
 
-        If you find:
-        - Security issue → MUST request changes
-        - Token/secret leak → MUST request changes
-        - console.log → MUST request changes
+        DO NOT comment on:
+        - Naming conventions for models or fields
+        - Minor style preferences in schema formatting
+        - Suggested indexes that are "nice to have" but not critical
+        - Refactoring or restructuring suggestions
 
-        Otherwise:
-        - Suggest improvements clearly with reasoning
+        Be concise. One short sentence per issue.
