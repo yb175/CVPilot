@@ -1,6 +1,11 @@
 name : Frontend Production Server
 run-name: Build triggered by ${{ github.actor }} on ${{ github.ref }}
-on: [push,pull_request]
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
 jobs : 
   Build-Frontend-Production-Server:
     runs-on: ubuntu-latest
