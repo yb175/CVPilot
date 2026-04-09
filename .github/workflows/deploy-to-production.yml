@@ -49,7 +49,9 @@ jobs:
             npx prisma generate
             npx prisma migrate deploy
             npm run build
+            export PATH="$PATH:$(npm bin -g)"
             pm2 reload cvpilot-backend ||  pm2 start npm --name cvpilot-backend -- start
+            pm2 status
             cd ..
             echo "Deploying frontend..."
             # ===== Frontend =====
