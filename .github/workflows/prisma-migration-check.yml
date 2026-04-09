@@ -53,5 +53,5 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
-      - name: Check for pending migrations
-        run: npx prisma migrate status
+      - name: Apply migrations to test DB
+        run: npx prisma migrate deploy
