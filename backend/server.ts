@@ -1,37 +1,29 @@
 import express from "express";
-import prisma from "./lib/prisma.js";
-const app = express() ; 
+import authRouter from "./route/auth.route.js";
+import { clerkMiddleware } from "./middleware/auth.middleware.js";
+import cors from "cors";
+import dotenv from 'dotenv'
+dotenv.config();
 
-app.get("/health",(req : any,res : any)=>{
-    res.send("OK")
-})
+const app = express();
 
-app.get("/db", async (req : any, res : any) => {
-    try {
-        // Create a test user
-        const user = await prisma.user.create({
-            data: {
-                email: `test${Date.now()}@example.com`,
-                name: "Test User"
-            }
-        });
-        
-        // Fetch all users
-        const allUsers = await prisma.user.findMany();
-        
-        res.json({
-            success: true,
-            message: "Prisma integration working",
-            createdUser: user,
-            allUsers: allUsers
-        });
-    } catch (error : any) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-})
+// CORS with credentials support for Bearer tokens
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Clerk middleware - extracts session from cookies or Authorization header
+app.use(clerkMiddleware);
+
+app.get("/health", (req: any, res: any) => {
+  res.send("OK");
+});
+
+app.use("/auth", authRouter);
+
 app.listen(3000,()=>{
     console.log("Server started on port 3000")
 }) ; 
