@@ -1,0 +1,45 @@
+name: Deploy via SSH
+run-name: Deploy via SSH triggered by ${{ github.actor }} on ${{ github.ref }}
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute remote SSH commands using SSH key
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          passphrase: ${{ secrets.DO_PASSPHRASE }}
+          script: |
+            set -e
+            echo "Testing SSH connection to remote server..."
+            hostname
+            whoami
+            cd ~/CVPilot
+            git pull origin main
+            echo "Deploying backend..."
+            # ===== Backend =====
+            cd backend
+            npm install 
+            npx prisma generate
+            npx prisma migrate deploy
+            pm2 reload cvpilot-backend
+            cd ..
+            echo "Deploying frontend..."
+            # ===== Frontend =====
+            cd frontend
+            npm install
+            npm run build
+            sudo mkdir -p /var/www/CVPilot/
+            sudo rm -rf /var/www/CVPilot/*
+            sudo cp -r dist/* /var/www/CVPilot/
+            echo "Deployment complete!"
