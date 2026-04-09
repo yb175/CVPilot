@@ -23,9 +23,13 @@ jobs:
           passphrase: ${{ secrets.DO_PASSPHRASE }}
           script: |
             set -e
+            set -x 
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            nvm install --lts
             nvm use --lts
+
             echo "checking node version..."
             node --version
             npm --version
