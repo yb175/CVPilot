@@ -18,7 +18,7 @@ const VALID_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
 ];
-const VALID_EXT = [".pdf", ".docx", ".doc"];
+const VALID_EXT = [".pdf", ".docx"];
  
 const extractText = async (f: File): Promise<string> => {
   const ext = f.name.split(".").pop()?.toLowerCase();
@@ -57,7 +57,7 @@ export function ResumeUpload({
   const validate = (f: File) => {
     const ext = "." + f.name.split(".").pop()?.toLowerCase();
     if (!VALID_TYPES.includes(f.type) && !VALID_EXT.includes(ext)) {
-      setError("Only PDF, DOCX, or DOC files are allowed.");
+      setError("Only PDF, DOCX files are allowed.");
       return false;
     }
     setError("");
@@ -156,13 +156,13 @@ export function ResumeUpload({
         ) : (
           <div className="text-center">
             <p className="text-sm font-medium text-gray-300">Drop your resume here</p>
-            <p className="text-xs text-gray-600 mt-1">or click to browse — PDF, DOCX, DOC</p>
+            <p className="text-xs text-gray-600 mt-1">or click to browse — PDF, DOCX</p>
           </div>
         )}
  
         {!file && (
           <div className="flex gap-2 mt-1">
-            {["PDF", "DOCX", "DOC"].map((fmt) => (
+            {["PDF", "DOCX"].map((fmt) => (
               <span
                 key={fmt}
                 className="px-2.5 py-0.5 rounded-full bg-gray-800 border border-gray-700/60 text-[10px] text-gray-400 tracking-widest"

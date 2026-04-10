@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import LandingPage from './pages/LandingPage'
 import { ResumePage } from './pages/ResumePage'
 import ProfilePage from './pages/ProfilePage'
+import { AppLayout } from './components/AppLayout'
+
 function App() {
   return (
     <Router>
@@ -14,12 +16,16 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/resume" element={
           <ProtectedRoute>
+            <AppLayout>
           <ResumePage />
+          </AppLayout>
         </ProtectedRoute>
           } />
         <Route path="/profile" element={
           <ProtectedRoute>
+            <AppLayout>
             <ProfilePage />
+            </AppLayout>
           </ProtectedRoute>
         } />
         <Route path="/sign-in" element={<SignInPage />} />

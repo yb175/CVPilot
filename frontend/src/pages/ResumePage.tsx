@@ -35,9 +35,6 @@ export function ResumePage() {
         {/* Header row */}
         <div className="flex items-center justify-between mb-10">
           <div>
-            <p className="text-[10px] tracking-[0.35em] text-gray-500 mb-2 font-medium">
-              CVPILOT — AI JOB INTELLIGENCE
-            </p>
             <h1
               className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#e8e8e8]"
               style={{ fontFamily: "'Georgia', serif" }}
