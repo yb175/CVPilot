@@ -1,5 +1,4 @@
 import prisma from "../lib/prisma.js"
-import { Prisma } from "@prisma/client"
 
 export async function syncClerkUser(clerkId: string, email: string, name?: string) {
   // First, try to find by clerkId
@@ -18,7 +17,7 @@ export async function syncClerkUser(clerkId: string, email: string, name?: strin
         }
       })
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2002') {
         // Handle unique constraint violation (email already in use)
         throw new Error("Email already in use")
       }
