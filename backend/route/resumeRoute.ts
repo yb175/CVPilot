@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { uploadResumeHandler } from "../controller/resumeController.js";
-import { uploadResume } from "../middleware/upload.js";
+import { uploadResume, validateFileMagicBytes } from "../middleware/upload.js";
 import { protectedRoute } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -17,6 +17,7 @@ router.post(
   "/",
   protectedRoute,
   uploadResume,
+  validateFileMagicBytes,
   uploadResumeHandler
 );
 

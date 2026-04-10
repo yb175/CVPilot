@@ -22,8 +22,7 @@ export const triggerResumeParsing = async (
   ): Promise<void> => {
     try {
       console.log(
-        `[ParsingTrigger] Queued parsing for userId: ${userId}`,
-        fileUrl ? `fileUrl: ${fileUrl}` : ""
+        `[ParsingTrigger] Queued parsing for userId: ${userId}`
       );
   
       // TODO: Replace with actual queue system (BullMQ / Kafka / etc.)

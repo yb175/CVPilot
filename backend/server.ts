@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
 import express from "express";
 import { clerkMiddleware } from "@clerk/express";
 import authRouter from "./route/auth.route.js";
@@ -5,9 +9,6 @@ import preferencesRouter from "./route/preferences.route.js";
 import systemRouter from "./route/system.route.js";
 import resumeRoute from "./route/resumeRoute.js";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const app = express();
 

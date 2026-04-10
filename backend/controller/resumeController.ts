@@ -10,10 +10,7 @@ interface AuthRequest extends Request {
   } | null;
 }
 
-export const uploadResumeHandler = async (
-  req: AuthRequest,
-  res: Response
-) => {
+export const uploadResumeHandler = async (req: AuthRequest, res: Response) => {
   try {
     // 1. Get userId from req.auth (populated by protectedRoute middleware)
     const userId = req.auth?.userId;
@@ -35,11 +32,16 @@ export const uploadResumeHandler = async (
     const fileHash = generateFileHash(fileBuffer);
 
     // 4. Get existing resume
-    let existingResume;
+    let existingResume = null;
     try {
       existingResume = await getResumeByUserId(userId);
+      // existingResume is null if not found — that's expected!
     } catch (error) {
-      console.log("No existing resume found - creating new one");
+      // Only thrown when there's a REAL DB error
+      console.error("DB error fetching existing resume:", error);
+      return res.status(500).json({
+        error: "Database error - please try again",
+      });
     }
 
     // 5. If same file → skip everything
@@ -53,10 +55,7 @@ export const uploadResumeHandler = async (
     // 6. Upload new file to Cloudinary
     let uploadResult;
     try {
-      uploadResult = await uploadResume(
-        fileBuffer,
-        req.file.mimetype
-      );
+      uploadResult = await uploadResume(fileBuffer, req.file.mimetype);
     } catch (error) {
       console.error("Cloudinary upload failed:", error);
       return res.status(500).json({
@@ -83,7 +82,10 @@ export const uploadResumeHandler = async (
       try {
         await deleteResume(publicId);
       } catch (rollbackError) {
-        console.error("Rollback (delete cloudinary file) failed:", rollbackError);
+        console.error(
+          "Rollback (delete cloudinary file) failed:",
+          rollbackError
+        );
       }
 
       return res.status(500).json({
