@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadResumeHandler } from "../controller/resumeController.js";
+import { uploadResumeHandler, getResumeHandler } from "../controller/resumeController.js";
 import { uploadResume, validateFileMagicBytes } from "../middleware/upload.js";
 import { protectedRoute } from "../middleware/auth.middleware.js";
 
@@ -19,6 +19,19 @@ router.post(
   uploadResume,
   validateFileMagicBytes,
   uploadResumeHandler
+);
+
+/**
+ * GET /resume
+ * Retrieve parsed resume data
+ * Middleware chain:
+ *   1. protectedRoute (checks Clerk auth)
+ *   2. getResumeHandler (returns parsed data)
+ */
+router.get(
+  "/",
+  protectedRoute,
+  getResumeHandler
 );
 
 export default router;

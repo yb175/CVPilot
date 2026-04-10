@@ -9,9 +9,19 @@ import preferencesRouter from "./route/preferences.route.js";
 import systemRouter from "./route/system.route.js";
 import resumeRoute from "./route/resumeRoute.js";
 import cors from "cors";
+import { initializeGeminiClient } from "./service/geminiClient.js";
 
 const app = express();
 app.use(express.json());
+
+// Initialize Gemini client for LLM parsing
+try {
+  initializeGeminiClient();
+  console.log("[Server] Gemini client initialized");
+} catch (error) {
+  console.warn("[Server] Gemini client initialization warning:", error);
+  console.warn("[Server] Resume parsing will fall back to rule-based extraction");
+}
 
 // 1. Body parser
 app.use(express.json());

@@ -105,9 +105,10 @@ export const uploadResumeHandler = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // 9. Fire-and-forget parsing
-    triggerResumeParsing(userId, secureUrl).catch((err: any) =>
-      console.error("Parsing failed:", err)
+    // 9. Fire-and-forget parsing (pass file buffer to avoid re-download)
+    console.log(`[CONTROLLER] Triggering parsing for userId: ${userId}, buffer size: ${fileBuffer.length}`);
+    triggerResumeParsing(userId, secureUrl, fileBuffer).catch((err: any) =>
+      console.error("[CONTROLLER] Parsing trigger failed:", err)
     );
 
     // 10. Success response
@@ -118,6 +119,50 @@ export const uploadResumeHandler = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("Resume upload error:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+/**
+ * GET /resume
+ * Retrieve parsed resume data for authenticated user
+ */
+export const getResumeHandler = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.auth?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const resume = await getResumeByUserId(userId);
+
+    if (!resume) {
+      return res.status(404).json({ 
+        error: "No resume found. Please upload a resume first." 
+      });
+    }
+
+    // If parsing still in progress, parsedData will be null
+    if (!resume.parsedData) {
+      return res.status(202).json({
+        message: "Resume uploaded but still parsing. Try again in a few seconds.",
+        fileUrl: resume.fileUrl,
+        uploadedAt: resume.uploadedAt,
+      });
+    }
+
+    // Return parsed data
+    return res.status(200).json({
+      message: "Resume parsed successfully",
+      parsedData: resume.parsedData,
+      uploadedAt: resume.uploadedAt,
+      fileUrl: resume.fileUrl,
+    });
+  } catch (error) {
+    console.error("Get resume error:", error);
     return res.status(500).json({
       error: "Internal server error",
     });

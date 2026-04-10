@@ -12,6 +12,7 @@ export const uploadResume = (
       {
         folder: "cvpilot/resumes",
         resource_type: "auto",
+        type: "upload",  // Allows public access to the file
       },
       (error, result) => {
         if (error || !result) {

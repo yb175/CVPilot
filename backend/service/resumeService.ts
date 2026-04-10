@@ -58,3 +58,29 @@ export const upsertResume = async (data: UpsertResumeInput) => {
     }
   };
 
+/**
+ * Update only the parsedData field of a resume
+ * Does not modify file hash, URL, or other fields
+ *
+ * @param userId - User ID
+ * @param parsedData - Parsed resume data to store (can be null)
+ * @returns Updated Resume record or throws error
+ */
+export const updateResumeParsedData = async (
+  userId: string,
+  parsedData: any
+) => {
+  try {
+    return await prisma.resume.update({
+      where: { userId },
+      data: {
+        parsedData,
+        updatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("DB error updating parsedData:", error);
+    throw new Error("Failed to update resume parsed data in database");
+  }
+};
+
