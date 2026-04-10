@@ -9,9 +9,15 @@ concurrency:
   group: deploy-to-production
   cancel-in-progress: true
 jobs:
-  test-ssh:
+  deploy:
     runs-on: ubuntu-latest
-
+    environment: production
+    env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+        CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+        VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
     steps:
       - name: Execute remote SSH commands using SSH key
         uses: appleboy/ssh-action@v1.0.3
@@ -21,14 +27,14 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           passphrase: ${{ secrets.DO_PASSPHRASE }}
+          envs: DATABASE_URL,FRONTEND_URL,CLERK_SECRET_KEY,VITE_CLERK_PUBLISHABLE_KEY,CLERK_PUBLISHABLE_KEY
           script: |
             set -e
             set -x 
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-            nvm install --lts
-            nvm use --lts
+            nvm use --lts || (nvm install --lts && nvm use --lts)
 
             echo "checking node version..."
             node --version
@@ -45,6 +51,30 @@ jobs:
             echo "Deploying backend..."
             # ===== Backend =====
             cd backend
+            echo "🔧 Generating .env file..."
+            set +x
+            tmp_file=".env.tmp"
+            > "$tmp_file"
+            if [ ! -f ".env.sample" ]; then
+              echo "Error: .env.sample file not found!"
+              exit 1
+            fi
+            while IFS= read -r line || [ -n "$line" ]; do
+              if [[ -z "$line" || "$line" == \#* ]]; then
+                continue
+              fi
+            key=$(echo "$line" | cut -d '=' -f 1 | xargs)
+            echo "Processing $key"
+            value=$(printenv "$key")
+            if ! printenv "$key" > /dev/null; then
+              echo "❌ Missing env: $key"
+              exit 1
+            fi
+            printf "%s=%s\n" "$key" "$value" >> "$tmp_file"
+            done < .env.sample 
+            mv "$tmp_file" .env
+            chmod 600 .env
+            echo "✅ .env file generated successfully"
             npm ci
             npx prisma generate
             npx prisma migrate deploy
@@ -54,10 +84,44 @@ jobs:
             fi
             pm2 reload cvpilot-backend ||  pm2 start npm --name cvpilot-backend -- start
             pm2 status
+            for i in {1..10}; do
+              if curl -f http://localhost:3000/health; then
+                echo "✅ Server is up"
+                break
+              fi
+              echo "⏳ Waiting for server..."
+              sleep 2
+            done
+            curl -f http://localhost:3000/health || exit 1
             cd ..
             echo "Deploying frontend..."
             # ===== Frontend =====
             cd frontend
+            echo "🔧 Generating .env file..."
+            set +x
+            tmp_file=".env.tmp"
+            > "$tmp_file"
+            if [ ! -f ".env.sample" ]; then
+              echo "Error: .env.sample file not found!"
+              exit 1
+            fi
+            while IFS= read -r line || [ -n "$line" ]; do
+              if [[ -z "$line" || "$line" == \#* ]]; then
+                continue
+              fi
+            key=$(echo "$line" | cut -d '=' -f 1 | xargs)
+            echo "Processing $key"
+            value=$(printenv "$key")
+            if ! printenv "$key" > /dev/null; then
+              echo "❌ Missing env: $key"
+              exit 1
+            fi
+            printf "%s=%s\n" "$key" "$value" >> "$tmp_file"
+            done < .env.sample 
+            mv "$tmp_file" .env
+            chmod 600 .env
+            echo "✅ .env file generated successfully"
+            npm install --package-lock-only
             npm ci
             npm run build
             sudo mkdir -p /var/www/CVPilot/
