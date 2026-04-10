@@ -1,6 +1,6 @@
 import express from "express"
 import {validator} from "../middleware/Validator.js"
-import {preferencesSchema} from "../validators/preferences.schema.js"
+import {preferencesSchema, patchSchema} from "../validators/preferences.schema.js"
 import { protectedRoute } from "../middleware/auth.middleware.js"
 import {
   createPreferences,
@@ -23,7 +23,7 @@ router.get("/",
 
 router.patch("/",
     protectedRoute,
-    validator(preferencesSchema),
+    validator(patchSchema),
     patchPreferences
 )
 
