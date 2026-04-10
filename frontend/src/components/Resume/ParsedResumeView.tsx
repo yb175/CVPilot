@@ -7,6 +7,7 @@ interface ParsedResume {
 }
 
 export function ParsedResumeView({ data }: { data: ParsedResume }) {
+  console.log("Parsed Resume Data:", data) // Debug log to check the data structure
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
 {/* 

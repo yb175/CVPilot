@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { ResumeUpload } from '../components/Resume/ResumeUpload'
 import { StatusBadge } from '../components/Resume/ParsingStatusBadge'
-import { ParsedResumeView } from '../components/Resume/ParsedResumeView'
 import { useNavigate } from 'react-router-dom'
  
 // ─── Types ────────────────────────────────────────────────────────────────────
