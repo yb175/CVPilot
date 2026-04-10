@@ -3,6 +3,7 @@ import authRouter from "./route/auth.route.js";
 import { clerkMiddleware } from "./middleware/auth.middleware.js";
 import preferencesRouter from "./route/preferences.route.js"
 import systemRouter from "./route/system.route.js"
+import resumeRoute from "./route/resumeRoute.js";
 import cors from "cors";
 import dotenv from 'dotenv'
 dotenv.config();
@@ -24,6 +25,7 @@ app.use("/", systemRouter)
 app.use(clerkMiddleware);
 app.use("/auth", authRouter);
 app.use("/preferences", preferencesRouter)
+app.use("/resume",resumeRoute)
 
 
 app.listen(3000,()=>{
