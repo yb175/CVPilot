@@ -1,6 +1,4 @@
-type ParsingStatus = "IDLE" | "PROCESSING" | "DONE" | "FAILED";
- 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
+export type ParsingStatus = "IDLE" | "PROCESSING" | "PARSED" | "FAILED";
  
 export function StatusBadge({ status }: { status: ParsingStatus }) {
   const config: Record<ParsingStatus, { label: string; dot: string; text: string; bg: string }> = {
@@ -16,8 +14,8 @@ export function StatusBadge({ status }: { status: ParsingStatus }) {
       text: "text-yellow-400",
       bg: "bg-yellow-900/20 border-yellow-700/30",
     },
-    DONE: {
-      label: "EXTRACTED",
+    PARSED: {
+      label: "PARSED",
       dot: "bg-emerald-400",
       text: "text-emerald-400",
       bg: "bg-emerald-900/20 border-emerald-700/30",

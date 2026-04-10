@@ -1,7 +1,49 @@
 import { useState } from "react";
-import { StatusBadge } from "./ParsingStatusBadge";
-type ParsingStatus = "IDLE" | "PROCESSING" | "DONE" | "FAILED";
-
+import { StatusBadge, type ParsingStatus } from "./ParsingStatusBadge";
+// ↑ ParsingStatus is imported, NOT redefined here.
+ 
+import * as pdfjsLib from "pdfjs-dist";
+import mammoth from "mammoth";
+ 
+// pdfjs-dist v4+ dropped the CDN-friendly worker format.
+// Vite must bundle the worker itself via new URL(..., import.meta.url).
+// This is the only approach that works reliably with Vite + pdfjs v4/v5.
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
+ 
+const VALID_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+];
+const VALID_EXT = [".pdf", ".docx", ".doc"];
+ 
+const extractText = async (f: File): Promise<string> => {
+  const ext = f.name.split(".").pop()?.toLowerCase();
+ 
+  if (ext === "pdf") {
+    const buffer = await f.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item: any) => item.str).join(" ") + "\n";
+    }
+    return text.trim();
+  }
+ 
+  if (ext === "docx" || ext === "doc") {
+    const buffer = await f.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    return result.value.trim();
+  }
+ 
+  throw new Error("Unsupported file format: " + ext);
+};
+ 
 export function ResumeUpload({
   onExtract,
 }: {
@@ -11,13 +53,6 @@ export function ResumeUpload({
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<ParsingStatus>("IDLE");
- 
-  const VALID_TYPES = [
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/msword",
-  ];
-  const VALID_EXT = [".pdf", ".docx", ".doc"];
  
   const validate = (f: File) => {
     const ext = "." + f.name.split(".").pop()?.toLowerCase();
@@ -43,25 +78,20 @@ export function ResumeUpload({
     if (validate(f)) setFile(f);
   };
  
-  const extractText = async (f: File): Promise<string> => {
-    // For PDFs and DOCX we read as text (caller can swap in a real parser)
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => resolve("");
-      reader.readAsText(f);
-    });
-  };
- 
   const handleUpload = async () => {
     if (!file) return;
     setStatus("PROCESSING");
     try {
       const text = await extractText(file);
-      setStatus("DONE");
+      if (!text) throw new Error("No text could be extracted from this file.");
+      setStatus("PARSED");
       onExtract(file, text);
-    } catch {
+    } catch (err) {
+      console.error("[ResumeUpload] extraction error:", err);
       setStatus("FAILED");
+      setError(
+        err instanceof Error ? err.message : "Extraction failed. Please try another file."
+      );
     }
   };
  
@@ -86,7 +116,6 @@ export function ResumeUpload({
         `}
         onClick={() => document.getElementById("resume-input")?.click()}
       >
-        {/* Hidden input */}
         <input
           id="resume-input"
           type="file"
@@ -95,7 +124,6 @@ export function ResumeUpload({
           className="hidden"
         />
  
-        {/* Icon */}
         <div
           className={`
             w-14 h-14 rounded-xl flex items-center justify-center
@@ -118,7 +146,6 @@ export function ResumeUpload({
           )}
         </div>
  
-        {/* Text */}
         {file ? (
           <div className="text-center">
             <p className="text-sm font-semibold text-indigo-300">{file.name}</p>
@@ -128,16 +155,11 @@ export function ResumeUpload({
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-sm font-medium text-gray-300">
-              Drop your resume here
-            </p>
-            <p className="text-xs text-gray-600 mt-1">
-              or click to browse — PDF, DOCX, DOC
-            </p>
+            <p className="text-sm font-medium text-gray-300">Drop your resume here</p>
+            <p className="text-xs text-gray-600 mt-1">or click to browse — PDF, DOCX, DOC</p>
           </div>
         )}
  
-        {/* Format pills */}
         {!file && (
           <div className="flex gap-2 mt-1">
             {["PDF", "DOCX", "DOC"].map((fmt) => (
@@ -152,12 +174,10 @@ export function ResumeUpload({
         )}
       </div>
  
-      {/* Error */}
       {error && (
         <p className="text-red-400 text-xs text-center -mt-2">{error}</p>
       )}
  
-      {/* Upload button */}
       <button
         disabled={!file || status === "PROCESSING"}
         onClick={handleUpload}
@@ -191,7 +211,6 @@ export function ResumeUpload({
         )}
       </button>
  
-      {/* Status badge */}
       {status !== "IDLE" && (
         <div className="flex justify-center">
           <StatusBadge status={status} />

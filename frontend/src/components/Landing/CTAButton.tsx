@@ -7,7 +7,7 @@ export function CTAButton() {
  
   return (
     <button
-      onClick={() => navigate(isSignedIn ? "/resume" : "/sign-in")}
+      onClick={() => navigate(isSignedIn ? "/resume" : "/sign-up")}
       className="
         mt-8 px-10 py-4
         bg-indigo-600 hover:bg-indigo-500

@@ -12,8 +12,16 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/resume" element={<ResumePage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/resume" element={
+          <ProtectedRoute>
+          <ResumePage />
+        </ProtectedRoute>
+          } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
         <Route

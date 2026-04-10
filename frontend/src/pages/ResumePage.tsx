@@ -1,23 +1,19 @@
-// frontend/src/pages/ResumePage.tsx
 import { useState } from 'react'
 import { ResumeUpload } from '../components/Resume/ResumeUpload'
-import { StatusBadge } from '../components/Resume/ParsingStatusBadge'
+import { StatusBadge, type ParsingStatus } from '../components/Resume/ParsingStatusBadge'
+// ↑ ParsingStatus is imported, NOT redefined here.
 import { useNavigate } from 'react-router-dom'
  
-// ─── Types ────────────────────────────────────────────────────────────────────
-type ParsingStatus = "IDLE" | "PROCESSING" | "DONE" | "FAILED";
-
 export function ResumePage() {
- const navigate = useNavigate();
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState<string>("");
   const [status, setStatus] = useState<ParsingStatus>("IDLE");
  
   const handleExtract = (f: File, text: string) => {
     setFile(f);
-    setExtractedText(text); // ← your extracted resume text lives here
-    setStatus("DONE");
-    // TODO: pass `text` to your LLM pipeline
+    setExtractedText(text);
+    setStatus("PARSED"); // was "DONE" — aligned to backend enum
     console.log("Extracted text:", text);
   };
  
@@ -65,7 +61,6 @@ export function ResumePage() {
  
         {/* Main content */}
         {!file ? (
-          // Upload state
           <div className="flex flex-col gap-6">
             <div className="text-center mb-4">
               <p className="text-gray-400 text-sm max-w-md mx-auto">
@@ -75,11 +70,9 @@ export function ResumePage() {
             <ResumeUpload onExtract={handleExtract} />
           </div>
         ) : (
-          // Done state
           <div className="flex flex-col gap-6">
             {/* File info card */}
             <div className="bg-[#0d111c]/80 border border-gray-800/70 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 shadow-[0_0_40px_rgba(99,102,241,0.06)]">
-              {/* File icon */}
               <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -89,7 +82,6 @@ export function ResumePage() {
                 </svg>
               </div>
  
-              {/* File meta */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-200 truncate">{file.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
@@ -116,8 +108,7 @@ export function ResumePage() {
                   {extractedText.slice(0, 800)}
                   {extractedText.length > 800 && (
                     <span className="text-gray-600">
-                      {"\n\n"}...{" "}
-                      {(extractedText.length - 800).toLocaleString()} more characters
+                      {"\n\n"}... {(extractedText.length - 800).toLocaleString()} more characters
                     </span>
                   )}
                 </pre>
@@ -130,23 +121,23 @@ export function ResumePage() {
                 Text extracted and ready for AI matching.
               </p>
               <button
-  onClick={() => navigate('/profile')}
-  className="
-    flex items-center gap-2
-    px-6 py-2.5
-    bg-indigo-600 hover:bg-indigo-500
-    text-white text-xs font-bold tracking-[0.15em]
-    border border-indigo-500/60
-    rounded-lg
-    shadow-[0_0_20px_rgba(99,102,241,0.25)]
-    transition-all duration-200
-  "
->
-  UPDATE PREFERENCES
-  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-</button>
+                onClick={() => navigate('/profile')}
+                className="
+                  flex items-center gap-2
+                  px-6 py-2.5
+                  bg-indigo-600 hover:bg-indigo-500
+                  text-white text-xs font-bold tracking-[0.15em]
+                  border border-indigo-500/60
+                  rounded-lg
+                  shadow-[0_0_20px_rgba(99,102,241,0.25)]
+                  transition-all duration-200
+                "
+              >
+                UPDATE PREFERENCES
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
           </div>
         )}
