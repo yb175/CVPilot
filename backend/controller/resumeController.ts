@@ -3,10 +3,11 @@ import { generateFileHash } from "../lib/hash.js";
 import { getResumeByUserId, upsertResume } from "../service/resumeService.js";
 import { uploadResume, deleteResume } from "../service/cloudinaryService.js";
 import { triggerResumeParsing } from "../service/parsingTrigger.js";
+import { syncClerkUser } from "../service/user.service.js";
 
 interface AuthRequest extends Request {
   auth: {
-    userId: string;
+    userId: string
   } | null;
 }
 
@@ -18,6 +19,8 @@ export const uploadResumeHandler = async (req: AuthRequest, res: Response) => {
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
+
+    await syncClerkUser(userId,"")
 
     // 2. Validate file
     if (!req.file) {

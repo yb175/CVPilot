@@ -33,41 +33,28 @@ export const getResumeByUserId = async (
  * Uses Prisma upsert with userId as unique constraint
  * Ensures parsedData is preserved during updates
  */
-export const upsertResume = async (
-  data: UpsertResumeInput
-) => {
-  try {
-    
-    const user = await prisma.user.upsert({
-        where: { clerkId: data.userId },
-        update: {},
+export const upsertResume = async (data: UpsertResumeInput) => {
+    try {
+      return await prisma.resume.upsert({
+        where: { userId: data.userId },
         create: {
-          clerkId: data.userId,
-          email: `${data.userId}@clerk.local`, // Placeholder until sync
-          name: null,
+          userId: data.userId,
+          fileUrl: data.fileUrl,
+          publicId: data.publicId,
+          fileHash: data.fileHash,
+          uploadedAt: data.uploadedAt,
+        },
+        update: {
+          fileUrl: data.fileUrl,
+          publicId: data.publicId,
+          fileHash: data.fileHash,
+          uploadedAt: data.uploadedAt,
+          // parsedData is preserved
         },
       });
-    
-    return await prisma.resume.upsert({
-      where: { userId: (data.userId) },
-      create: {
-        userId: data.userId,
-        fileUrl: data.fileUrl,
-        publicId: data.publicId,
-        fileHash: data.fileHash,
-        uploadedAt: data.uploadedAt,
-      },
-      update: {
-        fileUrl: data.fileUrl,
-        publicId: data.publicId,
-        fileHash: data.fileHash,
-        uploadedAt: data.uploadedAt,
-        // parsedData is intentionally NOT updated to preserve existing parsed results
-      },
-    });
-  } catch (error) {
-    console.log(error)
-    throw new Error("Failed to upsert resume in database");
-  }
-};
+    } catch (error) {
+      console.log(error);
+      throw new Error("Failed to upsert resume in database");
+    }
+  };
 
