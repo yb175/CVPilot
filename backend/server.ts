@@ -11,6 +11,7 @@ import resumeRoute from "./route/resumeRoute.js";
 import cors from "cors";
 
 const app = express();
+app.use(express.json());
 
 // 1. Body parser
 app.use(express.json());
