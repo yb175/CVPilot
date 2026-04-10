@@ -1,19 +1,6 @@
 import prisma from "../lib/prisma.js"
-import { clerkClient } from "@clerk/express"
 
-export async function syncClerkUser(clerkId: string) {
-  // Fetch real user data from Clerk
-  let userEmail: string | undefined
-  let userName: string | undefined
-
-  try {
-    const clerkUser = await clerkClient.users.getUser(clerkId)
-    userEmail = clerkUser.emailAddresses?.[0]?.emailAddress
-    userName = clerkUser.firstName || undefined
-  } catch (error) {
-    // If Clerk fetch fails, we'll create with placeholder but continue
-  }
-
+export async function syncClerkUser(clerkId: string, email: string, name?: string) {
   // First, try to find by clerkId
   let user = await prisma.user.findUnique({
     where: { clerkId }
@@ -25,8 +12,8 @@ export async function syncClerkUser(clerkId: string) {
       return await prisma.user.update({
         where: { clerkId },
         data: {
-          ...(userEmail && { email: userEmail }),
-          ...(userName && { name: userName })
+          ...(email && { email }),
+          ...(name && { name })
         }
       })
     } catch (error) {
@@ -42,8 +29,8 @@ export async function syncClerkUser(clerkId: string) {
   return await prisma.user.create({
     data: {
       clerkId,
-      email: userEmail || `temp-${clerkId}@placeholder.com`,
-      name: userName
+      email: email || `temp-${clerkId}@placeholder.com`,
+      name
     }
   })
 }
