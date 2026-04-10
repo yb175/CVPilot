@@ -40,8 +40,8 @@ model UserPreferences {
 
 model Resume {
   id          String   @id @default(uuid())
-  userId      Int      @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
 
   fileUrl     String
   publicId    String

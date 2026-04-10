@@ -19,7 +19,7 @@ export const getResumeByUserId = async (
 ) => {
   try {
     const resume= await prisma.resume.findUnique({
-      where: { userId: Number(userId) },
+      where: { userId: userId },
     });
     return resume;
   } catch (error) {
@@ -37,10 +37,21 @@ export const upsertResume = async (
   data: UpsertResumeInput
 ) => {
   try {
+    
+    const user = await prisma.user.upsert({
+        where: { clerkId: data.userId },
+        update: {},
+        create: {
+          clerkId: data.userId,
+          email: `${data.userId}@clerk.local`, // Placeholder until sync
+          name: null,
+        },
+      });
+    
     return await prisma.resume.upsert({
-      where: { userId: Number(data.userId) },
+      where: { userId: (data.userId) },
       create: {
-        userId: Number(data.userId),
+        userId: data.userId,
         fileUrl: data.fileUrl,
         publicId: data.publicId,
         fileHash: data.fileHash,

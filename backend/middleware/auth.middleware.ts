@@ -1,21 +1,41 @@
-import { clerkMiddleware as clerkExpressMiddleware, getAuth } from '@clerk/express'
+import { Request, Response, NextFunction } from "express";
+import { getAuth } from "@clerk/express";
 
-// Export the Clerk middleware - handles Bearer tokens and session cookies
-export const clerkMiddleware = clerkExpressMiddleware()
+// Extend Express Request type to include auth
+declare global {
+  namespace Express {
+    interface Request {
+      auth: {
+        userId: string;
+      } | null;
+    }
+  }
+}
 
-// Protected route middleware - validate authentication using getAuth()
-export const protectedRoute = (req: any, res: any, next: any) => {
-  const auth = getAuth(req)
+/**
+ * Protected route middleware
+ * Ensures user is authenticated via Clerk
+ * Must be used AFTER clerkMiddleware()
+ */
+export const protectedRoute = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // getAuth is populated by clerkMiddleware()
+  const auth = getAuth(req);
 
-  // Check if user is authenticated
   if (!auth || !auth.userId) {
     return res.status(401).json({
-      success: false,
-      message: 'Unauthorized - Missing or invalid authentication',
-    })
+      error: "Unauthorized",
+      message: "Valid Clerk token required",
+    });
   }
 
-  // Attach auth to request for use in route handler
-  req.auth = auth
-  next()
-}
+  // Attach userId to request for controller access
+  req.auth = {
+    userId: auth.userId,
+  };
+
+  next();
+};
