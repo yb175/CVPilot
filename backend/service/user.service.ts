@@ -1,5 +1,4 @@
 import prisma from "../lib/prisma.js"
-import { Prisma } from "@prisma/client"
 
 export async function syncClerkUser(clerkId: string, email: string, name?: string) {
   // First, try to find by clerkId
