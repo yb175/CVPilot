@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma.js"
+import { Prisma } from "@prisma/client"
 
 export async function syncClerkUser(clerkId: string, email: string, name?: string) {
   // First, try to find by clerkId
@@ -8,13 +9,21 @@ export async function syncClerkUser(clerkId: string, email: string, name?: strin
 
   if (user) {
     // User exists with this clerkId, update if needed
-    return await prisma.user.update({
-      where: { clerkId },
-      data: {
-        ...(email && { email }),
-        ...(name && { name })
+    try {
+      return await prisma.user.update({
+        where: { clerkId },
+        data: {
+          ...(email && { email }),
+          ...(name && { name })
+        }
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        // Handle unique constraint violation (email already in use)
+        throw new Error("Email already in use")
       }
-    })
+      throw error
+    }
   }
 
   // User doesn't exist with this clerkId, create new
@@ -32,5 +41,3 @@ export async function getUserByClerkId(clerkId: string) {
     where: { clerkId }
   })
 }
-
-

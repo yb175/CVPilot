@@ -10,6 +10,8 @@ export async function createOrUpdatePreferences(clerkId: string, data: any, emai
     update: data,
     create: {
       userId: user.id,
+      seniority: data.seniority || "INTERN",
+      locationPreferences: data.locationPreferences || [],
       ...data
     }
   })
@@ -28,8 +30,14 @@ export async function updatePreferences(clerkId: string, data: any, email?: stri
   // Ensure user exists in database
   const user = await syncClerkUser(clerkId, email || "", name)
 
-  return prisma.userPreferences.update({
+  return prisma.userPreferences.upsert({
     where: { userId: user.id },
-    data
+    update: data,
+    create: {
+      userId: user.id,
+      seniority: data.seniority || "INTERN",
+      locationPreferences: data.locationPreferences || [],
+      ...data
+    }
   })
 }

@@ -8,7 +8,7 @@ CREATE TYPE "LocationType" AS ENUM ('ONSITE', 'HYBRID', 'REMOTE');
 CREATE TABLE "UserPreferences" (
     "userId" INTEGER NOT NULL,
     "seniority" "Seniority" NOT NULL,
-    "locationPreferences" "LocationType"[],
+    "locationPreferences" "LocationType"[] NOT NULL DEFAULT '{}',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
