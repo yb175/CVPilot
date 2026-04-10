@@ -4,6 +4,8 @@ This document describes the production-grade backend for the CVPilot monorepo.
 
 Stack: Node.js + TypeScript + Prisma + PostgreSQL
 
+> **📚 For comprehensive API documentation, see [DOCUMENTATION.md](DOCUMENTATION.md)**
+
 ---
 
 ## 📁 Folder Structure Explanation
