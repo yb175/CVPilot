@@ -164,7 +164,14 @@ async function callGemini(
 
     // Try to parse JSON
     try {
-      const parsed = JSON.parse(text);
+      // Strip markdown code blocks if present (LLM sometimes wraps JSON in ```json...```)
+      let jsonText = text.trim();
+      const jsonCodeBlockMatch = jsonText.match(/^```(?:json)?\n?([\s\S]*)\n?```$/);
+      if (jsonCodeBlockMatch) {
+        jsonText = jsonCodeBlockMatch[1].trim();
+      }
+      
+      const parsed = JSON.parse(jsonText);
       logParsingEvent("LLM_CALL", resumeId, "success", {
         userId,
         message: `LLM call successful (attempt ${attempt})`,

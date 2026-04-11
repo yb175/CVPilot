@@ -53,11 +53,19 @@ export interface ParsingResult {
 }
 
 /**
+ * Resume format types
+ */
+export type ResumeFormat = "ATS" | "CREATIVE" | "ACADEMIC" | "INTERNATIONAL" | "UNKNOWN";
+
+/**
  * PDF extraction options
  */
 export interface PDFExtractionOptions {
-  maxChars?: number; // Default: 10000
+  maxChars?: number; // Default: 25000
   timeout?: number; // Default: 30000ms
+  format?: ResumeFormat; // Detected resume format
+  language?: string; // Detected language code (e.g., 'en', 'es', 'fr')
+  userId?: string; // For logging
 }
 
 /**
@@ -66,6 +74,9 @@ export interface PDFExtractionOptions {
 export interface LLMCallOptions {
   maxRetries?: number; // Default: 1 (1 initial + 1 repair)
   timeout?: number; // Default: 45000ms
+  format?: ResumeFormat; // Detected resume format
+  language?: string; // Detected language code
+  userId?: string; // For logging
 }
 
 /**

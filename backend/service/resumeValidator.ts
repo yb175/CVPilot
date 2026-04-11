@@ -36,44 +36,65 @@ function sanitizeValidatedResume(resume: ParsedResume): ParsedResume {
     }
   }
 
-  // Rule 2: Deduplicate and normalize skills
+  // Rule 2: Deduplicate and normalize skills (expanded list)
   if (resume.skills && Array.isArray(resume.skills)) {
+    const skillNormalizations: Record<string, string> = {
+      "node.js": "Node.js", "nodejs": "Node.js", "node": "Node.js",
+      "react.js": "React", "reactjs": "React", "react": "React",
+      "vue.js": "Vue", "vuejs": "Vue", "vue": "Vue",
+      "angular.js": "Angular", "angularjs": "Angular", "angular": "Angular",
+      "typescript": "TypeScript", "ts": "TypeScript",
+      "javascript": "JavaScript", "js": "JavaScript",
+      "python": "Python", "py": "Python",
+      "java": "Java", "golang": "Go", "rust": "Rust",
+      "c++": "C++", "cpp": "C++", "c#": "C#", "csharp": "C#",
+      ".net": ".NET", "asp.net": "ASP.NET",
+      "postgresql": "PostgreSQL", "postgres": "PostgreSQL",
+      "mongodb": "MongoDB", "mongo": "MongoDB",
+      "mysql": "MySQL", "mariadb": "MariaDB",
+      "sql server": "SQL Server", "mssql": "SQL Server",
+      "dynamodb": "DynamoDB", "firestore": "Firestore",
+      "redis": "Redis", "memcached": "Memcached",
+      "elasticsearch": "Elasticsearch", "elastic": "Elasticsearch",
+      "docker": "Docker", "kubernetes": "Kubernetes", "k8s": "Kubernetes",
+      "aws": "AWS", "amazon web services": "AWS",
+      "gcp": "GCP", "google cloud": "GCP",
+      "azure": "Azure", "microsoft azure": "Azure",
+      "git": "Git", "github": "GitHub", "gitlab": "GitLab", "bitbucket": "Bitbucket",
+      "rest api": "REST API", "graphql": "GraphQL",
+      "jenkins": "Jenkins", "circleci": "CircleCI", "github actions": "GitHub Actions",
+      "terraform": "Terraform", "ansible": "Ansible",
+    };
+    
     resume.skills = [...new Set(
-      resume.skills.map((skill) =>
-        skill
-          .trim()
-          .replace(/\.js$/i, ".js") // Normalize Node.js, React.js
-          .replace(/^node\.js$/i, "Node.js")
-          .replace(/^react\.js$/i, "React")
-          .replace(/^react$/i, "React")
-          .replace(/^typescript$/i, "TypeScript")
-          .replace(/^javascript$/i, "JavaScript")
-          .replace(/^python$/i, "Python")
-          .replace(/^java$/i, "Java")
-      )
+      resume.skills.map((skill) => {
+        const trimmed = skill.trim();
+        const lower = trimmed.toLowerCase();
+        return skillNormalizations[lower] || trimmed;
+      })
     )];
   }
 
-  // Rule 3: Validate seniority consistency
-  if (resume.seniority && resume.experienceYears) {
-    const years = resume.experienceYears;
-    const seniority = resume.seniority;
+  // Rule 3: Improved seniority inference with title weighting
+  if (resume.seniority || resume.experienceYears || resume.currentRole) {
+    const inferredSeniority = inferSeniorityV2(
+      resume.currentRole,
+      resume.experienceYears,
+      resume.seniority
+    );
     
-    // If inconsistent, mark for review but keep LLM's judgment
-    if (seniority === "Senior" && years < 5) {
-      // Keep as-is but log concern
+    // Only override if we have a stronger confidence inference
+    if (inferredSeniority && resume.seniority !== inferredSeniority) {
       logParsingEvent("VALIDATION", "unknown", "info", {
-        message: "⚠️ Seniority-experience mismatch: Senior with <5 years",
-        metadata: { years, seniority }
+        message: "ℹ️ Seniority adjusted based on title & experience",
+        metadata: {
+          original: resume.seniority,
+          adjusted: inferredSeniority,
+          role: resume.currentRole,
+          years: resume.experienceYears,
+        }
       });
-    }
-    
-    if (seniority === "Intern" && years > 2) {
-      // Likely wrong - should be at least Junior
-      logParsingEvent("VALIDATION", "unknown", "info", {
-        message: "⚠️ Seniority-experience mismatch: Intern with 2+ years",
-        metadata: { years, seniority }
-      });
+      resume.seniority = inferredSeniority;
     }
   }
 
@@ -81,8 +102,9 @@ function sanitizeValidatedResume(resume: ParsedResume): ParsedResume {
   if (resume.location) {
     resume.location = resume.location.trim();
     const invalidLocationPatterns = [
-      /^(aws|azure|gcp|cloud|devops|docker|kubernetes)$/i,
-      /^[a-z\.\+]+$/i, // Looks like a domain name or email
+      /^(aws|azure|gcp|cloud|devops|docker|kubernetes|terraform|jenkins|ci\/cd)$/i,
+      /^[a-z\.\/\+\-]+@[a-z]+\.[a-z]+$/i, // Email address
+      /^(https?:\/\/|www\.)/, // URL
     ];
     if (invalidLocationPatterns.some((pattern) => pattern.test(resume.location || ""))) {
       resume.location = null;
@@ -93,7 +115,7 @@ function sanitizeValidatedResume(resume: ParsedResume): ParsedResume {
   if (resume.education &&
     !resume.education.degree &&
     !resume.education.institution) {
-    resume.education = null;
+    resume.education = { degree: null, institution: null };
   }
 
   // Rule 6: Deduplicate keywords
@@ -111,12 +133,118 @@ function sanitizeValidatedResume(resume: ParsedResume): ParsedResume {
     }
   }
 
-  // Rule 8: Ensure experienceYears is non-negative
-  if (resume.experienceYears !== null && resume.experienceYears < 0) {
-    resume.experienceYears = null;
+  // Rule 8: Ensure experienceYears is non-negative and reasonable
+  if (resume.experienceYears !== null) {
+    if (resume.experienceYears < 0 || resume.experienceYears > 70) {
+      resume.experienceYears = null;
+    }
+  }
+
+  // Rule 9: Normalize tech stack categories
+  if (resume.techStack && typeof resume.techStack === "object") {
+    const validCategories = ["frontend", "backend", "database", "cloud", "devops", "other"];
+    const normalized: Record<string, string> = {};
+    
+    for (const [category, techs] of Object.entries(resume.techStack)) {
+      // Only keep valid categories
+      const catLower = category.toLowerCase();
+      if (validCategories.includes(catLower)) {
+        // If techs is a string, clean it; if array, join it
+        const techString = Array.isArray(techs) ? techs.join(", ") : String(techs);
+        if (techString.trim()) {
+          normalized[catLower] = techString.trim();
+        }
+      }
+    }
+    
+    resume.techStack = Object.keys(normalized).length > 0 ? normalized : null;
+  }
+
+  // Rule 10: Log low confidence fields if available
+  if (resume.confidence && typeof resume.confidence === "object") {
+    const lowConfidenceFields = Object.entries(resume.confidence)
+      .filter(([_, score]) => typeof score === "number" && score > 0 && score < 40);
+    
+    if (lowConfidenceFields.length > 0) {
+      logParsingEvent("VALIDATION", "unknown", "info", {
+        message: "⚠️ Low confidence extraction detected",
+        metadata: {
+          lowConfidenceFields: lowConfidenceFields.map(([field, score]) => ({field, score})),
+        }
+      });
+    }
   }
 
   return resume;
+}
+
+/**
+ * Improved seniority inference V2
+ * Considers title keywords + years together for better accuracy
+ * 
+ * @param currentRole - Job title from resume
+ * @param experienceYears - Years of experience
+ * @param currentSeniority - Current seniority level (from LLM)
+ * @returns Inferred seniority level or null
+ */
+function inferSeniorityV2(
+  currentRole: string | null,
+  experienceYears: number | null,
+  currentSeniority: string | null
+): "Intern" | "Junior" | "Mid" | "Senior" | null {
+  if (!currentRole && !experienceYears) {
+    return null;
+  }
+
+  // Title keyword patterns for seniority levels
+  const principalPatterns = /^(principal|staff|distinguished|architect|chief|vp|vice[- ]?president)/i;
+  const seniorPatterns = /^(senior|lead|tech[- ]?lead|engineering manager|sr\\.)/i;
+  const midPatterns = /^(mid[- ]?level|mid\\.)/i;
+  const juniorPatterns = /^(junior|jr\\.?|graduate|trainee)/i;
+  const internPatterns = /^(intern|student|apprentice)/i;
+
+  const role = currentRole?.toLowerCase() || "";
+  const years = experienceYears || 0;
+
+  // Check title keywords first (highest weight)
+  if (principalPatterns.test(role)) {
+    return "Senior"; // Map Principal → Senior (enum limitation)
+  }
+  
+  if (seniorPatterns.test(role)) {
+    // Title says Senior - trust it, even with fewer years
+    // But log if mismatched with experience
+    if (years < 3 && years > 0) {
+      logParsingEvent("VALIDATION", "unknown", "info", {
+        message: "ℹ️ Senior title with <3 years experience",
+        metadata: { role: currentRole, years }
+      });
+    }
+    return "Senior";
+  }
+
+  if (midPatterns.test(role)) {
+    return "Mid";
+  }
+
+  if (juniorPatterns.test(role)) {
+    return "Junior";
+  }
+
+  if (internPatterns.test(role)) {
+    return "Intern";
+  }
+
+  // No explicit title keywords - infer purely from years
+  if (years >= 5) {
+    return "Senior";
+  } else if (years >= 2) {
+    return "Mid";
+  } else if (years > 0) {
+    return "Junior";
+  } else {
+    return "Intern";
+  }
 }
 
 /**

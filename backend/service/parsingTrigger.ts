@@ -30,7 +30,90 @@ import { getPreferences } from "./preferences.service.js";
 import { logParsingEvent } from "../lib/parseLogger.js";
 import { detectMimeType } from "../lib/mimeDetector.js";
 import { ParsedResume } from "../validators/resume.schema.js";
+import { ResumeFormat } from "./types/parsing.js";
 import prisma from "../lib/prisma.js";
+
+/**
+ * =====================================
+ * Helper Functions: Format & Language Detection
+ * =====================================
+ */
+
+/**
+ * Detect resume format from extracted text
+ * @returns ResumeFormat indicating the resume structure type
+ */
+function detectResumeFormat(text: string): ResumeFormat {
+  const lower = text.toLowerCase();
+  
+  // ATS-formatted: numbered bullets, structured sections, minimal styling
+  const atsIndicators = [
+    /^\d+\.\s+/m, // Numbered items
+    /^\-\s+/m, // Bullet points
+    /(experience|education|skills|projects|certifications|summary|objective)/i, // Standard sections
+  ];
+  const atsScore = atsIndicators.filter(p => p.test(text)).length;
+
+  // International: non-English text patterns or date formats (DD/MM/YYYY)
+  const internationalIndicators = [
+    /\d{1,2}\/\d{1,2}\/\d{4}/, // European date format
+    /\d{1,2}\.\d{1,2}\.\d{4}/, // German/Nordic date format
+    /janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre/i, // French months
+    /enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre/i, // Spanish months
+  ];
+  const intlScore = internationalIndicators.filter(p => p.test(text)).length;
+
+  // Academic: GPA, thesis, academic advisor, dissertation
+  const academicIndicators = [
+    /gpa|grade\s+point|undergraduate|graduate|thesis|dissertation|academic\s+advisor/i,
+    /course\s+(?:work|taken)|major:|minor:/i,
+  ];
+  const academicScore = academicIndicators.filter(p => p.test(text)).length;
+
+  // Creative: longer descriptions, narrative format, less structured
+  const creativeIndicators = [
+    text.split(/\n/).filter(l => l.length > 80).length > 5, // Long lines suggest narrative
+    /^[^\n]{100,}/m, // Paragraphs over 100 chars
+  ];
+  const creativeScore = creativeIndicators.filter(p => p).length;
+
+  // Determine format based on scores
+  if (intlScore >= 2) return "INTERNATIONAL";
+  if (academicScore >= 2) return "ACADEMIC";
+  if (atsScore >= 3) return "ATS";
+  if (creativeScore >= 1) return "CREATIVE";
+  return "UNKNOWN";
+}
+
+/**
+ * Detect language of resume text
+ * @returns ISO 639-1 language code (e.g., 'en', 'es', 'fr')
+ */
+function detectLanguage(text: string): string {
+  const lower = text.toLowerCase();
+  
+  // Common keywords by language
+  const languages: Record<string, { keywords: string[], score: number }> = {
+    en: { keywords: ["experience", "education", "skills", "employed", "company", "university"], score: 0 },
+    es: { keywords: ["experiencia", "educación", "habilidades", "empleado", "empresa", "universidad"], score: 0 },
+    fr: { keywords: ["expérience", "éducation", "compétences", "employé", "entreprise", "université"], score: 0 },
+    de: { keywords: ["erfahrung", "ausbildung", "fähigkeiten", "angestellt", "unternehmen", "universität"], score: 0 },
+    pt: { keywords: ["experiência", "educação", "habilidades", "empregado", "empresa", "universidade"], score: 0 },
+  };
+
+  // Score each language
+  for (const [lang, data] of Object.entries(languages)) {
+    for (const keyword of data.keywords) {
+      const pattern = new RegExp(`\\b${keyword}\\b`, "gi");
+      const matches = (text.match(pattern) || []).length;
+      data.score += matches;
+    }
+  }
+
+  // Return language with highest score, default to English
+  const detected = Object.entries(languages).sort((a, b) => b[1].score - a[1].score)[0];
+  return detected && detected[1].score > 0 ? detected[0] : "en";
+}
 
 /**
  * Trigger resume parsing
@@ -197,6 +280,16 @@ async function parseResumeInner(
     log("TEXT_EXTRACT", `✅ Extracted ${resumeText.length} characters in ${extractTime}ms`);
   }
 
+  // Step 2b: Detect resume format and language
+  let detectedFormat: ResumeFormat = "UNKNOWN";
+  let detectedLanguage: string = "en";
+
+  if (resumeText) {
+    detectedFormat = detectResumeFormat(resumeText);
+    detectedLanguage = detectLanguage(resumeText);
+    log("FORMAT_DETECT", `✅ Detected format: ${detectedFormat}, language: ${detectedLanguage}`);
+  }
+
   // Step 3: Call Gemini LLM (if extraction succeeded)
   let parsedData: ParsedResume | null = null;
   let usedLLM = false;
@@ -207,6 +300,8 @@ async function parseResumeInner(
     try {
       const llmResponse = await callGeminiForResumeParsing(resumeText, resumeId, {
         userId,
+        format: detectedFormat,
+        language: detectedLanguage,
       });
       const llmTime = Date.now() - t3;
 

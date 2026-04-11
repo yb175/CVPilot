@@ -11,7 +11,7 @@ import { PDFExtractionOptions } from "./types/parsing.js";
  * Handles modern Word documents (.docx format).
  */
 
-const DEFAULT_MAX_CHARS = 10000;
+const DEFAULT_MAX_CHARS = 25000;
 const DEFAULT_TIMEOUT_MS = 30000;
 
 /**
@@ -109,42 +109,65 @@ export const extractTextFromDOCX = async (
 };
 
 /**
- * Intelligently truncate text by paragraphs
- * Prefers to break at paragraph boundaries rather than mid-word
+ * Intelligently truncate text by paragraphs with section awareness
+ * Prioritizes: Work Experience > Skills > Education > Projects > Other sections
+ * Preserves structure while respecting character limit
  */
 function truncateByParagraphs(text: string, maxChars: number): string {
   if (text.length <= maxChars) {
     return text;
   }
 
-  // Split by double newlines (paragraphs)
+  // Identify resume sections
+  const sectionPatterns = [
+    { name: "EXPERIENCE", pattern: /(?:work\s+experience|employment|professional\s+experience|experience)/i, priority: 1 },
+    { name: "SKILLS", pattern: /(?:technical\s+skills|skills|competencies|technical\s+expertise)/i, priority: 2 },
+    { name: "EDUCATION", pattern: /(?:education|academic|degree|university|college)/i, priority: 3 },
+    { name: "PROJECTS", pattern: /(?:projects?|portfolio|work\s+samples?)/i, priority: 4 },
+    { name: "OTHER", pattern: /.*/, priority: 5 },
+  ];
+
   const paragraphs = text.split(/\n\n+/);
-  let result = "";
+  const categorized = new Map<string, string[]>();
 
   for (const para of paragraphs) {
-    if ((result + para).length <= maxChars) {
-      result += (result ? "\n\n" : "") + para;
-    } else {
-      break;
-    }
-  }
-
-  // If no paragraphs fit, try line breaks
-  if (!result && paragraphs.length > 0) {
-    const lines = text.split("\n");
-    for (const line of lines) {
-      if ((result + line).length <= maxChars) {
-        result += (result ? "\n" : "") + line;
-      } else {
+    for (const section of sectionPatterns) {
+      if (section.pattern.test(para.substring(0, 100))) {
+        const key = section.name;
+        if (!categorized.has(key)) categorized.set(key, []);
+        categorized.get(key)!.push(para);
         break;
       }
     }
   }
 
-  // If still nothing, just truncate at char boundary
-  if (!result) {
-    result = text.substring(0, maxChars);
+  // Build result prioritizing high-value sections
+  let result = "";
+  const order = ["EXPERIENCE", "SKILLS", "EDUCATION", "PROJECTS", "OTHER"];
+
+  for (const sectionName of order) {
+    const section = categorized.get(sectionName) || [];
+    for (const para of section) {
+      const candidate = result + (result ? "\n\n" : "") + para;
+      if (candidate.length <= maxChars) {
+        result = candidate;
+      } else {
+        // Section doesn't fit completely, try adding lines from this section only
+        if (result.length < maxChars * 0.8) {
+          const lines = para.split("\n");
+          for (const line of lines) {
+            const lineCandidate = result + (result ? "\n" : "") + line;
+            if (lineCandidate.length <= maxChars) {
+              result = lineCandidate;
+            } else {
+              return result || text.substring(0, maxChars);
+            }
+          }
+        }
+        return result || text.substring(0, maxChars);
+      }
+    }
   }
 
-  return result;
+  return result || text.substring(0, maxChars);
 }

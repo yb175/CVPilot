@@ -160,7 +160,7 @@ export const fallbackParsing = (
     techStack: null,
     projects: null,
     keywords: null,
-    education: null,
+    education: { degree: null, institution: null },
   };
 
   // Extract name - first line or first capitalized phrase
@@ -181,7 +181,10 @@ export const fallbackParsing = (
   if (extractEducation) {
     const extractedEducation = extractEducationFromText(resumeText);
     if (extractedEducation) {
-      result.education = extractedEducation;
+      result.education = {
+        degree: extractedEducation.degree || null,
+        institution: extractedEducation.institution || null
+      };
     }
   }
 
@@ -259,10 +262,10 @@ function extractSkillsFromText(text: string): string[] {
 /**
  * Extract education from text
  */
-function extractEducationFromText(text: string): Record<string, any> | null {
+function extractEducationFromText(text: string): { degree: string | null; institution: string | null } | null {
   // Look for degree patterns like "B.S. in Computer Science"
   const degreePatterns = [
-    /([A-Z]\.?[A-Z]\.?)\s+(?:in|of)?\s+([A-Za-z\s]+?)(?:\n|,|from)/i,
+    /([A-Z]\.?[A-Z]\.)\s+(?:in|of)?\s+([A-Za-z\s]+?)(?:\n|,|from)/i,
     /(Bachelor|Master|Doctor|Diploma)(?:'s)?\s+(?:of|in)\s+([A-Za-z\s]+?)(?:\n|,|from)/i,
   ];
 
@@ -271,7 +274,7 @@ function extractEducationFromText(text: string): Record<string, any> | null {
     if (match) {
       return {
         degree: match[1],
-        field: match[2]?.trim() || null,
+        institution: match[2]?.trim() || null,
       };
     }
   }
