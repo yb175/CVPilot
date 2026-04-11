@@ -194,15 +194,14 @@ export default function ProfilePage() {
               </>
             )}
           </div>
-        </div>
-      </div>
-      <button
+               <button
     onClick={() => navigate("/jobs")}
     className="h-fit inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 transition-colors duration-150 shadow-lg shadow-indigo-500/10"
   >
     Find Jobs →
   </button>
-
+        </div>
+      </div>
     </div>
   );
 }
