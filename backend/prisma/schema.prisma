@@ -19,13 +19,13 @@ enum LocationType {
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
-  clerkId  String? @unique
-  email    String  @unique
-  name     String?
-  resume   Resume?
-  
+  id          Int         @id @default(autoincrement())
+  clerkId     String      @unique
+  email       String      @unique
+  name        String?
+  resume      Resume?
   preferences UserPreferences?
+  jobMatches  Job_match[]
 }
 
 model UserPreferences {
@@ -34,23 +34,51 @@ model UserPreferences {
   locationPreferences LocationType[]
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
+  user                User          @relation(fields: [userId], references: [id])
 }
 
 model Resume {
   id          String   @id @default(uuid())
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
-
   fileUrl     String
   publicId    String
   fileHash    String
-
   parsedData  Json?
-
   uploadedAt  DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+}
+
+model Job {
+  job_id      String      @id @default(cuid())
+  title       String
+  company     String
+  location    String
+  description String
+  source      String
+  externalId  String
+  skills      String[]
+  rawData     Json
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  jobMatches  Job_match[]
+
+  @@unique([externalId, source])
+  @@index([source])
+}
+
+model Job_match {
+  userId  Int
+  jobId   String
+  score   String
+  reason  String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job     Job     @relation(fields: [jobId], references: [job_id], onDelete: Cascade)
+
+  @@id([userId, jobId])
+  @@index([userId])
+  @@index([jobId])
 }
