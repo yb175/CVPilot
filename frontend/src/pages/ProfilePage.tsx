@@ -4,13 +4,15 @@ import { PreferencesForm } from "../components/Profile/PreferencesForm";
 import { PreferencesSummary } from "../components/Profile/PreferencesSummary";
 import type { Seniority, LocationType } from "../components/Profile/PreferencesForm";
 import { useApi } from "../lib/fetcher";
-import { uploadResume } from "../services/resume";
+import { uploadResume, getResume } from "../services/resume";
 import { createPreferences, getPreferences, updatePreferences } from "../services/preferences";
 import { useNavigate } from "react-router-dom";
+import { PageContainer, GridBackground, Container, Card, Button, PageHeader, useToast, PageTransition } from "../components/ui";
  
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { fetchWithAuth } = useApi();
+  const { addToast } = useToast();
   // Keep a stable ref so the useEffect doesn't re-run on every render
   const fetchRef = useRef(fetchWithAuth);
   useEffect(() => { fetchRef.current = fetchWithAuth; }, [fetchWithAuth]);
@@ -20,6 +22,7 @@ export default function ProfilePage() {
  
   // null = no file on server yet, string = filename known
   const [resumeFileName, setResumeFileName] = useState<string | null>(null);
+  const [hasExistingResume, setHasExistingResume] = useState(false);
  
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -27,13 +30,11 @@ export default function ProfilePage() {
  
   // Track whether the user already has saved prefs so we know PATCH vs POST
   const [hasPreferences, setHasPreferences] = useState(false);
+  const [showEditPrefs, setShowEditPrefs] = useState(false);
  
-  // Separate feedback per section so they don't clobber each other
-  const [resumeError, setResumeError] = useState<string | null>(null);
-  const [resumeSuccess, setResumeSuccess] = useState<string | null>(null);
-  const [prefsError, setPrefsError] = useState<string | null>(null);
-  const [prefsSuccess, setPrefsSuccess] = useState<string | null>(null);
- 
+  // Separate feedback per section
+  // Note: We now use toasts instead of alerts, no need to track individual state
+
   useEffect(() => {
     const fetchPrefs = async () => {
       try {
@@ -53,39 +54,73 @@ export default function ProfilePage() {
     };
     fetchPrefs();
   }, []); // stable fetchRef means no dep needed
- 
+
+  // 📄 Load existing resume on mount
+  useEffect(() => {
+    const fetchResume = async () => {
+      try {
+        const data = await getResume(fetchRef.current);
+        if (data && data.fileUrl) {
+          // Use the original filename if available, otherwise use a friendly formatted name
+          const fileName = data.originalFileName || `Resume_${new Date(data.uploadedAt).toLocaleDateString().replace(/\//g, '-')}.pdf`;
+          setResumeFileName(fileName);
+          setHasExistingResume(true);
+        } else {
+          setResumeFileName(null);
+          setHasExistingResume(false);
+        }
+      } catch (err) {
+        console.error("Failed to load resume:", err);
+        setResumeFileName(null);
+        setHasExistingResume(false);
+      }
+    };
+    fetchResume();
+  }, []);
+
   // 📄 Resume Upload
   const handleResumeReplace = useCallback(async (file: File) => {
     setIsUploading(true);
-    setResumeError(null);
-    setResumeSuccess(null);
- 
+
     try {
       const data = await uploadResume(file, fetchRef.current);
       if (data.changed) {
         setResumeFileName(file.name);
-        setResumeSuccess("Resume uploaded successfully ✅");
+        setHasExistingResume(true);
+        addToast({
+          message: 'Resume uploaded successfully! Ready to find jobs.',
+          variant: 'success',
+        });
       } else {
-        setResumeSuccess("Same resume already on file ⚠️");
+        // Duplicate file: Show as warning
+        addToast({
+          message: 'This resume was already uploaded.',
+          variant: 'warning',
+        });
       }
     } catch (err: any) {
-      setResumeError(err.message || "Upload failed. Please try again.");
+      const errorMsg = err.message || "Upload failed. Please try again.";
+      addToast({
+        message: errorMsg,
+        variant: 'error',
+      });
     } finally {
       setIsUploading(false);
     }
-  }, []);
- 
+  }, [addToast]);
+
+  // Auto-dismiss handled by toasts now, no need for extra effects
+  // Keeping these state vars minimal for potential future use
+
   // ⚙️ Preferences Save — PATCH if exists, POST if new
   const handlePreferencesSubmit = useCallback(async (
     seniority: Seniority,
     locations: LocationType[]
   ) => {
     setIsSaving(true);
-    setPrefsError(null);
-    setPrefsSuccess(null);
- 
+
     const payload = { seniority, locationPreferences: locations };
- 
+
     try {
       let data;
       if (hasPreferences) {
@@ -96,112 +131,125 @@ export default function ProfilePage() {
       }
       setSavedSeniority(data.seniority);
       setSavedLocations(data.locationPreferences);
-      setPrefsSuccess(hasPreferences ? "Preferences updated ✅" : "Preferences saved ✅");
+      const successMsg = hasPreferences ? "Preferences updated ✅" : "Preferences saved ✅";
+      addToast({
+        message: successMsg,
+        variant: 'success',
+      });
     } catch (err: any) {
-      setPrefsError(err.message || "Failed to save preferences. Please try again.");
+      const errorMsg = err.message || "Failed to save preferences. Please try again.";
+      addToast({
+        message: errorMsg,
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
-  }, [hasPreferences]);
+  }, [hasPreferences, addToast]);
  
   return (
-    <div className="min-h-screen bg-[#080b14] text-white">
-      {/* Background grid */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
- 
-      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
-        {/* Header */}
-        <div className="mb-10">
-          <h1
-            className="text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight text-[#e8e8e8]"
-            style={{ fontFamily: "'Georgia', serif" }}
-          >
-            Your{" "}
-            <em
-              className="not-italic"
-              style={{
-                background: "linear-gradient(135deg, #a5b4fc 0%, #818cf8 60%, #6366f1 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
+    <PageTransition>
+      <PageContainer background="secondary">
+        <GridBackground />
+
+        <Container size="lg" className="py-10 sm:py-16">
+        {/* Page Header */}
+        <PageHeader
+          tagline="Profile Setup"
+          title={<>Your <em style={{background: "linear-gradient(135deg, #a5b4fc 0%, #818cf8 60%, #6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", fontStyle: "italic", fontWeight: "inherit"}}>profile.</em></>}
+          description="Manage your resume and job preferences to get matched with the right opportunities."
+          className="mb-10"
+        />
+
+        <div className="space-y-6">
+          {/* Resume Section */}
+          <Card variant="elevated">
+            <Card.Header>
+              <h2 className="text-xl font-bold text-text-primary">Upload Your Resume</h2>
+              <p className="text-sm text-text-secondary mt-1">Required to get job matches</p>
+            </Card.Header>
+            <Card.Body>
+              <ResumeUpdateSection
+                currentFileName={resumeFileName ?? undefined}
+                hasExistingResume={hasExistingResume}
+                onReplace={handleResumeReplace}
+                isUploading={isUploading}
+              />
+            </Card.Body>
+          </Card>
+
+          {/* Preferences Section */}
+          <Card variant="elevated">
+            <Card.Header className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">Job Preferences</h2>
+                <p className="text-sm text-text-secondary mt-1">Tell us what you're looking for</p>
+              </div>
+              {hasPreferences && (
+                <Button
+                  onClick={() => setShowEditPrefs(!showEditPrefs)}
+                  variant="secondary"
+                  size="md"
+                >
+                  {showEditPrefs ? "Hide" : "Edit"} Preferences
+                </Button>
+              )}
+            </Card.Header>
+            <Card.Body>
+              {isLoadingPrefs ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-10 bg-bg-surface rounded-lg" />
+                  <div className="space-y-2">
+                    <div className="h-8 bg-bg-surface rounded-lg w-3/4" />
+                    <div className="h-20 bg-bg-surface rounded-lg" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-8 bg-bg-surface rounded-lg w-3/4" />
+                    <div className="h-20 bg-bg-surface rounded-lg" />
+                  </div>
+                  <div className="h-10 bg-bg-surface rounded-lg w-1/3 mt-6" />
+                </div>
+              ) : (
+                <>
+                  {/* Show form only if no prefs saved OR edit mode is open */}
+                  {(!hasPreferences || showEditPrefs) && (
+                    <div className="mb-6">
+                      <PreferencesForm
+                        initialSeniority={savedSeniority}
+                        initialLocations={savedLocations}
+                        onSubmit={handlePreferencesSubmit}
+                        isSaving={isSaving}
+                      />
+                    </div>
+                  )}
+
+                  {/* Show summary if prefs exist */}
+                  {hasPreferences && (
+                    <PreferencesSummary
+                      seniority={savedSeniority}
+                      locations={savedLocations}
+                    />
+                  )}
+                </>
+              )}
+            </Card.Body>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={() => navigate("/jobs")}
+              variant="primary"
+              size="lg"
+              className="flex-1"
             >
-              profile.
-            </em>
-          </h1>
-          <p className="mt-3 text-gray-400 text-sm sm:text-base leading-relaxed max-w-md">
-            Manage your resume and job preferences to get matched with the right opportunities.
-          </p>
-        </div>
- 
-        <div className="space-y-4">
-          {/* Resume section with its own feedback */}
-          <div className="space-y-2">
-            {resumeError && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                {resumeError}
-              </div>
-            )}
-            {resumeSuccess && (
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
-                {resumeSuccess}
-              </div>
-            )}
-            <ResumeUpdateSection
-              currentFileName={resumeFileName ?? undefined}
-              onReplace={handleResumeReplace}
-              isUploading={isUploading}
-            />
+              Find Jobs →
+            </Button>
           </div>
- 
-          {/* Preferences section with its own feedback */}
-          <div className="space-y-2">
-            {prefsError && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                {prefsError}
-              </div>
-            )}
-            {prefsSuccess && (
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
-                {prefsSuccess}
-              </div>
-            )}
-            {isLoadingPrefs ? (
-              <div className="p-6 rounded-2xl border border-white/[0.07] bg-white/[0.03] text-gray-500 text-sm flex items-center gap-2">
-                <svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="8 8" strokeLinecap="round"/>
-                </svg>
-                Loading preferences…
-              </div>
-            ) : (
-              <>
-                <PreferencesForm
-                  initialSeniority={savedSeniority}
-                  initialLocations={savedLocations}
-                  onSubmit={handlePreferencesSubmit}
-                  isSaving={isSaving}
-                />
-                <PreferencesSummary
-                  seniority={savedSeniority}
-                  locations={savedLocations}
-                />
-              </>
-            )}
-          </div>
-               <button
-    onClick={() => navigate("/jobs")}
-    className="h-fit inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 transition-colors duration-150 shadow-lg shadow-indigo-500/10"
-  >
-    Find Jobs →
-  </button>
         </div>
-      </div>
-    </div>
+      </Container>
+      </PageContainer>
+    </PageTransition>
   );
+
 }

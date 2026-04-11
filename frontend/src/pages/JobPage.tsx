@@ -1,97 +1,154 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { JobList } from "../components/Jobs/JobList";
 import { MOCK_JOBS } from "../data/MockJobs";
- 
+import { PageContainer, GridBackground, Container, Button, PageTransition, useToast } from "../components/ui";
+import { checkResumeExists } from "../services/resume";
+import { useApi } from "../lib/fetcher";
+
 interface JobsPageProps {
   onNavigateToJob: (jobId: string) => void;
 }
- 
+
 export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
-  const [isLoading] = useState(false);
- 
-  const topScore = MOCK_JOBS[0]?.score ?? "0";
-  const avgScore = Math.round(
-    MOCK_JOBS.reduce((acc, j) => acc + parseInt(j.score, 10), 0) / MOCK_JOBS.length
-  );
- 
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [hasResume, setHasResume] = useState(false);
+  const [isCheckingResume, setIsCheckingResume] = useState(true);
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+  const { fetchWithAuth } = useApi();
+
+  // Check if user has uploaded resume
+  useEffect(() => {
+    const checkResume = async () => {
+      try {
+        const exists = await checkResumeExists(fetchWithAuth);
+        setHasResume(exists);
+      } catch (err) {
+        console.error("Failed to check resume:", err);
+        setHasResume(false);
+      } finally {
+        setIsCheckingResume(false);
+      }
+    };
+    checkResume();
+  }, [fetchWithAuth]);
+
+  // Only show real data: job count
+  // Note: topScore and avgScore removed - requires actual AI matching we don't have access to
+  const jobCount = MOCK_JOBS.length;
+
+  const handleRefetchJobs = async () => {
+    setIsRefetching(true);
+    // TODO: Implement API call to refetch jobs based on current resume
+    // This would call the backend to re-run the matching algorithm
+    setTimeout(() => {
+      setIsRefetching(false);
+      addToast({
+        message: 'Job list refreshed! New matches may be available.',
+        variant: 'success',
+      });
+    }, 1500);
+  };
+
   return (
-    <div className="min-h-screen bg-[#080b14] text-white">
-      {/* Grid background */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
- 
-      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
-        {/* Header */}
-        <div className="mb-8 sm:mb-10">
-          <p className="text-[10px] tracking-[0.35em] text-gray-500 font-medium mb-4">
-            CVPILOT — JOB MATCHES
-          </p>
-          <h1
-            className="text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight text-[#e8e8e8]"
-            style={{ fontFamily: "'Georgia', serif" }}
-          >
-            Your{" "}
-            <em
-              className="not-italic"
-              style={{
-                background: "linear-gradient(135deg, #a5b4fc 0%, #818cf8 60%, #6366f1 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
+    <PageTransition>
+      <PageContainer background="secondary">
+        <GridBackground />
+
+        <Container size="lg" className="py-10 sm:py-16">
+        {/* Page Header - Only show when resume exists */}
+        {!isCheckingResume && hasResume && (
+          <div className="mb-10 flex flex-col sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex-1">
+              <p className="text-xs tracking-widest text-text-tertiary font-medium mb-4 uppercase">
+                CVpilot — Job Matches
+              </p>
+              <h1
+                className="text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight text-text-primary mb-3 font-display"
+              >
+                Your{" "}
+                <em
+                  className="not-italic"
+                  style={{
+                    background: "linear-gradient(135deg, #a5b4fc 0%, #818cf8 60%, #6366f1 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  matches.
+                </em>
+              </h1>
+              <p className="text-text-secondary text-sm sm:text-base leading-relaxed max-w-md">
+                Ranked by neural match score. Top 10 opportunities tailored to your resume and preferences.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2 mt-4 sm:mt-0 sm:flex-shrink-0">
+              <Button
+                onClick={handleRefetchJobs}
+                isLoading={isRefetching}
+                variant="secondary"
+                size="md"
+              >
+                ↻ Refresh Jobs
+              </Button>
+              <Button
+                onClick={() => navigate("/profile")}
+                variant="ghost"
+                size="md"
+              >
+                ↺ Re-upload Resume
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Content based on resume status */}
+        {isCheckingResume ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin">
+              <svg className="h-8 w-8 text-accent-bright" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            </div>
+          </div>
+        ) : !hasResume ? (
+          /* Show CTA to upload resume */
+          <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto">
+            <div className="mb-6 p-4 rounded-full bg-accent-primary/10">
+              <svg className="w-12 h-12 text-accent-bright" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-text-primary mb-2">Upload Your Resume</h2>
+            <p className="text-text-secondary mb-8">We need your resume to match you with the perfect job opportunities. Let's get started!</p>
+            <Button
+              onClick={() => navigate("/profile")}
+              variant="primary"
+              size="lg"
             >
-              matches.
-            </em>
-          </h1>
-          <p className="mt-3 text-gray-400 text-sm sm:text-base leading-relaxed max-w-md">
-            Ranked by neural match score. Top 10 opportunities tailored to your resume and preferences.
-          </p>
-        </div>
- 
-        {/* Stats bar */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl py-3 px-3 sm:px-4">
-            <p className="text-base sm:text-xl font-bold text-white tracking-tight">
-              {MOCK_JOBS.length}
-            </p>
-            <p className="text-[10px] text-gray-500 mt-0.5 tracking-widest">MATCHES</p>
-          </div>
-          <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl py-3 px-3 sm:px-4">
-            <p className="text-base sm:text-xl font-bold text-emerald-400 tracking-tight">
-              {topScore}%
-            </p>
-            <p className="text-[10px] text-gray-500 mt-0.5 tracking-widest">TOP SCORE</p>
-          </div>
-          <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl py-3 px-3 sm:px-4">
-            <p className="text-base sm:text-xl font-bold text-indigo-400 tracking-tight flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-              {avgScore}%
-            </p>
-            <p className="text-[10px] text-gray-500 mt-0.5 tracking-widest">AVG SCORE</p>
-          </div>
-        </div>
- 
-        {/* Job list */}
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-28 rounded-2xl bg-white/[0.03] border border-white/[0.05] animate-pulse"
-                style={{ animationDelay: `${i * 80}ms` }}
-              />
-            ))}
+              Add Resume →
+            </Button>
           </div>
         ) : (
-          <JobList jobs={MOCK_JOBS} onJobClick={onNavigateToJob} />
+          /* Show job list */
+          <>
+            {/* Stats Card - Only showing realistic data (job count) */}
+            <div className="bg-bg-surface border border-border-light rounded-xl py-4 px-4 sm:px-6 mb-8">
+              <p className="text-xs text-text-tertiary font-semibold uppercase tracking-wide mb-2">Available Positions</p>
+              <p className="text-3xl font-bold text-text-primary">{jobCount}</p>
+            </div>
+
+            {/* Job List */}
+            <JobList jobs={MOCK_JOBS} onJobClick={onNavigateToJob} />
+          </>
         )}
-      </div>
-    </div>
+      </Container>
+      </PageContainer>
+    </PageTransition>
   );
 }

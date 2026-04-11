@@ -1,4 +1,5 @@
 import { JobMatchBadge } from "./JobMatchBadge";
+import { useBookmarks } from "../ui/BookmarksProvider";
 
 interface JobCardProps {
   jobId: string;
@@ -36,10 +37,22 @@ export function JobCard({
   index,
   onClick,
 }: JobCardProps) {
+  const { isBookmarked, addBookmark, removeBookmark } = useBookmarks();
+  const bookmarked = isBookmarked(jobId);
+
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (bookmarked) {
+      removeBookmark(jobId);
+    } else {
+      addBookmark(jobId);
+    }
+  };
+
   return (
     <article
       onClick={() => onClick(jobId)}
-      className="group relative rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.14] transition-all duration-200 cursor-pointer overflow-hidden"
+      className="group relative rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.14] transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-lg hover:scale-[1.01]"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       {/* Rank number */}
@@ -48,7 +61,7 @@ export function JobCard({
       </div>
 
       {/* Hover accent line */}
-      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-indigo-500/0 group-hover:bg-indigo-500/60 transition-all duration-200 rounded-l-2xl" />
+      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-indigo-500/0 group-hover:bg-indigo-500/60 transition-all duration-300 rounded-l-2xl" />
 
       <div className="pl-10 sm:pl-12 pr-4 sm:pr-5 py-4 sm:py-5">
         <div className="flex items-start justify-between gap-3">
@@ -82,15 +95,31 @@ export function JobCard({
             </p>
           </div>
 
-          {/* Score ring */}
-          <div className="flex-shrink-0 mt-0.5">
+          {/* Right actions */}
+          <div className="flex-shrink-0 flex flex-col items-end gap-2">
+            {/* Score ring */}
             <JobMatchBadge score={score} size="sm" />
+
+            {/* Bookmark button */}
+            <button
+              onClick={handleBookmarkClick}
+              className={`flex-shrink-0 p-2 rounded-lg transition-all duration-300 ${
+                bookmarked
+                  ? 'bg-status-warning/20 text-status-warning'
+                  : 'bg-transparent text-gray-500 hover:text-gray-400 hover:bg-white/[0.05]'
+              }`}
+              title={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
+            >
+              <svg className="w-4 h-4" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h6a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Arrow indicator */}
-      <div className="absolute bottom-4 right-4 sm:bottom-5 sm:right-5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <div className="absolute bottom-4 right-4 sm:bottom-5 sm:right-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path d="M3 11L11 3M11 3H5M11 3v6" stroke="#818cf8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>

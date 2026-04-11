@@ -3,6 +3,7 @@ import { useState, useRef, type ChangeEvent, type DragEvent } from "react";
 interface ResumeUpdateSectionProps {
   currentFileName?: string;
   currentFileUrl?: string | null;
+  hasExistingResume?: boolean;
   onReplace?: (file: File) => void;
   isUploading?: boolean;
 }
@@ -10,6 +11,7 @@ interface ResumeUpdateSectionProps {
 export function ResumeUpdateSection({
   currentFileName,
   currentFileUrl,
+  hasExistingResume = false,
   onReplace,
   isUploading = false,
 }: ResumeUpdateSectionProps) {
@@ -38,6 +40,12 @@ export function ResumeUpdateSection({
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const buttonText = isUploading
+    ? "Uploading…"
+    : hasExistingResume
+      ? "Replace Resume"
+      : "Upload Resume";
+
   return (
     <section className="rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-sm p-5 sm:p-6">
       {/* Section header */}
@@ -54,19 +62,22 @@ export function ResumeUpdateSection({
         </div>
       </div>
 
-      {/* Current file */}
+      {/* Current file - only show if we have a filename */}
       {currentFileName && (
         <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.07] rounded-xl px-4 py-3 mb-4">
           <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 animate-pulse" />
-          <span className="text-sm text-gray-300 font-medium flex-1 truncate">
-            {currentFileName}
-          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-500 mb-1">Current Resume</p>
+            <p className="text-sm text-gray-300 font-medium truncate">
+              {currentFileName}
+            </p>
+          </div>
           {currentFileUrl && (
             <a
               href={currentFileUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex-shrink-0"
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex-shrink-0 whitespace-nowrap ml-2"
             >
               View ↗
             </a>
@@ -125,7 +136,7 @@ export function ResumeUpdateSection({
             Uploading…
           </>
         ) : (
-          "Replace resume"
+          buttonText
         )}
       </button>
     </section>
