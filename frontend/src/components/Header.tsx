@@ -65,11 +65,11 @@ export function Header() {
               {/* Actions */}
               <div className="flex flex-col">
                 <Link
-                  to="/profile"
+                  to="/dashboard"
                   className="px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 transition"
                   onClick={() => setOpen(false)}
                 >
-                  Profile
+                  Dashboard
                 </Link>
 
                 <button

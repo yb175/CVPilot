@@ -5,7 +5,6 @@ import { SignInPage } from './pages/SignInPage'
 import { SignUpPage } from './pages/SignUpPage'
 import { DashboardPage } from './pages/DashboardPage'
 import LandingPage from './pages/LandingPage'
-import { ResumePage } from './pages/ResumePage'
 import ProfilePage from './pages/ProfilePage'
 import { AppLayout } from './components/AppLayout'
 import JobsPage from './pages/JobPage'
@@ -15,13 +14,6 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/resume" element={
-          <ProtectedRoute>
-            <AppLayout>
-          <ResumePage />
-          </AppLayout>
-        </ProtectedRoute>
-          } />
         <Route path="/profile" element={
           <ProtectedRoute>
             <AppLayout>

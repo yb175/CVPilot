@@ -8,7 +8,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      navigate("/resume");
+      navigate("/profile");
     }
   }, [isSignedIn, isLoaded, navigate]);
 
