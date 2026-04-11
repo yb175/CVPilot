@@ -8,6 +8,7 @@ import LandingPage from './pages/LandingPage'
 import { ResumePage } from './pages/ResumePage'
 import ProfilePage from './pages/ProfilePage'
 import { AppLayout } from './components/AppLayout'
+import JobsPage from './pages/JobPage'
 
 function App() {
   return (
@@ -25,6 +26,13 @@ function App() {
           <ProtectedRoute>
             <AppLayout>
             <ProfilePage />
+            </AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/jobs" element={
+          <ProtectedRoute>
+            <AppLayout>
+            <JobsPage onNavigateToJob={(jobId) => console.log("Navigate to job:", jobId)} />
             </AppLayout>
           </ProtectedRoute>
         } />
