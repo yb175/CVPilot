@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { checkResumeExists } from "../../services/resume";
 import { useApi } from "../../lib/fetcher";
 import { Button } from "../ui/Button";
@@ -14,6 +14,12 @@ export function CTAButton() {
   const [hasResume, setHasResume] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Stable ref to prevent effect rerun
+  const fetchRef = useRef(fetchWithAuth);
+  useEffect(() => {
+    fetchRef.current = fetchWithAuth;
+  }, [fetchWithAuth]);
+
   // Check resume status only for signed-in users
   useEffect(() => {
     if (!isLoaded) return;
@@ -25,7 +31,7 @@ export function CTAButton() {
 
     const checkResume = async () => {
       try {
-        const exists = await checkResumeExists(fetchWithAuth);
+        const exists = await checkResumeExists(fetchRef.current);
         setHasResume(exists);
       } catch (err) {
         console.error("Failed to check resume:", err);
@@ -36,7 +42,7 @@ export function CTAButton() {
     };
 
     checkResume();
-  }, [isSignedIn, isLoaded, fetchWithAuth]);
+  }, [isSignedIn, isLoaded]);
 
   const handleClick = () => {
     if (!isSignedIn) {

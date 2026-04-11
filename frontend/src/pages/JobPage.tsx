@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobList } from "../components/Jobs/JobList";
 import { MOCK_JOBS } from "../data/MockJobs";
@@ -18,11 +18,17 @@ export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
   const { addToast } = useToast();
   const { fetchWithAuth } = useApi();
 
+  // Stable ref to prevent effect rerun
+  const fetchRef = useRef(fetchWithAuth);
+  useEffect(() => {
+    fetchRef.current = fetchWithAuth;
+  }, [fetchWithAuth]);
+
   // Check if user has uploaded resume
   useEffect(() => {
     const checkResume = async () => {
       try {
-        const exists = await checkResumeExists(fetchWithAuth);
+        const exists = await checkResumeExists(fetchRef.current);
         setHasResume(exists);
       } catch (err) {
         console.error("Failed to check resume:", err);
@@ -32,7 +38,7 @@ export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
       }
     };
     checkResume();
-  }, [fetchWithAuth]);
+  }, []);
 
   // Only show real data: job count
   // Note: topScore and avgScore removed - requires actual AI matching we don't have access to

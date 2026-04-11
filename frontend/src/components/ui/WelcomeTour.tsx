@@ -25,7 +25,7 @@ export function WelcomeTour({ steps, onComplete, storageKey = 'cvpilot_tour_comp
       // Delay showing tour until page is fully loaded
       setTimeout(() => setIsVisible(true), 1000);
     }
-  }, []);
+  }, [storageKey, steps]);
 
   useEffect(() => {
     if (!isVisible || currentStep >= steps.length) return;

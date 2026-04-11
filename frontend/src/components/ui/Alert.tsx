@@ -54,12 +54,14 @@ export const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     const [isDismissed, setIsDismissed] = React.useState(false);
 
     useEffect(() => {
+      if (isDismissed) return; // Don't set timer if already dismissed
+
       const timer = setTimeout(() => {
         setIsDismissed(true);
         onDismiss?.();
       }, autoDismiss);
       return () => clearTimeout(timer);
-    }, [autoDismiss, onDismiss]);
+    }, [autoDismiss, onDismiss, isDismissed]);
 
     if (isDismissed) return null;
 

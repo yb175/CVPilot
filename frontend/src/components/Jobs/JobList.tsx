@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { JobCard } from "./JobCard";
 import type { Job } from "../../data/MockJobs";
 
@@ -11,6 +11,14 @@ const JOBS_PER_PAGE = 5;
 
 export function JobList({ jobs, onJobClick }: JobListProps) {
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset/clamp currentPage when jobs change
+  useEffect(() => {
+    const totalPages = jobs.length === 0 ? 1 : Math.ceil(jobs.length / JOBS_PER_PAGE);
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [jobs, currentPage]);
 
   if (jobs.length === 0) {
     return (

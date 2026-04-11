@@ -18,21 +18,26 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
 
   // Load bookmarks from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
         setBookmarks(new Set(JSON.parse(stored)));
-      } catch (err) {
-        console.error('Failed to load bookmarks:', err);
       }
+    } catch (err) {
+      console.error('Failed to load bookmarks:', err);
+    } finally {
+      setIsInitialized(true);
     }
-    setIsInitialized(true);
   }, []);
 
   // Save bookmarks to localStorage whenever they change
   useEffect(() => {
     if (isInitialized) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(bookmarks)));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(bookmarks)));
+      } catch (err) {
+        console.error('Failed to save bookmarks:', err);
+      }
     }
   }, [bookmarks, isInitialized]);
 
