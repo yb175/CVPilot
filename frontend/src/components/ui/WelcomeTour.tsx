@@ -20,19 +20,28 @@ export function WelcomeTour({ steps, onComplete, storageKey = 'cvpilot_tour_comp
   const [targetPos, setTargetPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
     try {
       const completed = localStorage.getItem(storageKey);
       if (!completed && steps.length > 0) {
         // Delay showing tour until page is fully loaded
-        setTimeout(() => setIsVisible(true), 1000);
+        timerId = setTimeout(() => setIsVisible(true), 1000);
       }
     } catch (err) {
       console.error('Failed to check tour completion:', err);
       // Proceed with tour even if localStorage fails
       if (steps.length > 0) {
-        setTimeout(() => setIsVisible(true), 1000);
+        timerId = setTimeout(() => setIsVisible(true), 1000);
       }
     }
+
+    // Cleanup: cancel pending timeout
+    return () => {
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
+    };
   }, [storageKey, steps]);
 
   useEffect(() => {
