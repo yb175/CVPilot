@@ -204,24 +204,30 @@ async function parseResumeInner(
   if (resumeText) {
     log("LLM_CALL", "Calling Gemini LLM for resume parsing...");
     const t3 = Date.now();
-    const llmResponse = await callGeminiForResumeParsing(resumeText, resumeId, {
-      userId,
-    });
-    const llmTime = Date.now() - t3;
-
-    if (llmResponse.success && llmResponse.data) {
-      log("LLM_CALL", `✅ LLM call succeeded in ${llmTime}ms`);
-      // Step 4: Validate and repair if needed
-      log("VALIDATION", "Validating and repairing parsed data...");
-      const t4 = Date.now();
-      parsedData = await validateAndRepairResume(llmResponse.data, resumeId, {
+    try {
+      const llmResponse = await callGeminiForResumeParsing(resumeText, resumeId, {
         userId,
       });
-      const validateTime = Date.now() - t4;
-      log("VALIDATION", `✅ Validation completed in ${validateTime}ms`);
-      usedLLM = true;
-    } else {
-      log("LLM_CALL", `❌ LLM call failed after ${llmTime}ms`);
+      const llmTime = Date.now() - t3;
+
+      if (llmResponse.success && llmResponse.data) {
+        log("LLM_CALL", `✅ LLM call succeeded in ${llmTime}ms`);
+        // Step 4: Validate and repair if needed
+        log("VALIDATION", "Validating and repairing parsed data...");
+        const t4 = Date.now();
+        parsedData = await validateAndRepairResume(llmResponse.data, resumeId, {
+          userId,
+        });
+        const validateTime = Date.now() - t4;
+        log("VALIDATION", `✅ Validation completed in ${validateTime}ms`);
+        usedLLM = true;
+      } else {
+        log("LLM_CALL", `❌ LLM call failed after ${llmTime}ms`);
+      }
+    } catch (llmError) {
+      const llmTime = Date.now() - t3;
+      log("LLM_CALL", `❌ LLM threw: ${llmError instanceof Error ? llmError.message : String(llmError)}`);
+      // parsedData remains null, fallback will run below
     }
   }
 

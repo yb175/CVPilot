@@ -1,3 +1,4 @@
+import { Prisma } from "../generated/prisma/client.js";
 import prisma from "../lib/prisma.js";
 
 /**
@@ -49,7 +50,8 @@ export const upsertResume = async (data: UpsertResumeInput) => {
           publicId: data.publicId,
           fileHash: data.fileHash,
           uploadedAt: data.uploadedAt,
-          // parsedData is preserved
+          parsedData: Prisma.JsonNull, // reset on re-upload — new file needs fresh parsing
+          updatedAt: new Date(),
         },
       });
     } catch (error) {
