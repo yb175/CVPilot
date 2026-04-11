@@ -65,7 +65,7 @@ export const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
 
     if (isDismissed) return null;
 
-    const variantClass = variantClasses[variant];
+    const variantClass = variantClasses[variant] ?? variantClasses['info'];
 
     return (
       <div

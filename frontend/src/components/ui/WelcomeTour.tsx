@@ -20,10 +20,18 @@ export function WelcomeTour({ steps, onComplete, storageKey = 'cvpilot_tour_comp
   const [targetPos, setTargetPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
-    const completed = localStorage.getItem(storageKey);
-    if (!completed && steps.length > 0) {
-      // Delay showing tour until page is fully loaded
-      setTimeout(() => setIsVisible(true), 1000);
+    try {
+      const completed = localStorage.getItem(storageKey);
+      if (!completed && steps.length > 0) {
+        // Delay showing tour until page is fully loaded
+        setTimeout(() => setIsVisible(true), 1000);
+      }
+    } catch (err) {
+      console.error('Failed to check tour completion:', err);
+      // Proceed with tour even if localStorage fails
+      if (steps.length > 0) {
+        setTimeout(() => setIsVisible(true), 1000);
+      }
     }
   }, [storageKey, steps]);
 
@@ -31,13 +39,23 @@ export function WelcomeTour({ steps, onComplete, storageKey = 'cvpilot_tour_comp
     if (!isVisible || currentStep >= steps.length) return;
 
     const updatePosition = () => {
-      const element = document.querySelector(steps[currentStep].target);
-      if (element) {
-        const rect = element.getBoundingClientRect();
-        setTargetPos({
-          top: rect.top + window.scrollY - 10,
-          left: rect.left + window.scrollX - 10,
-        });
+      try {
+        const target = steps[currentStep]?.target;
+        if (!target || typeof target !== 'string' || target.trim() === '') {
+          console.warn('Invalid tour target:', target);
+          return;
+        }
+
+        const element = document.querySelector(target);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          setTargetPos({
+            top: rect.top + window.scrollY - 10,
+            left: rect.left + window.scrollX - 10,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to find tour target element:', err);
       }
     };
 
@@ -56,7 +74,12 @@ export function WelcomeTour({ steps, onComplete, storageKey = 'cvpilot_tour_comp
 
   const handleComplete = () => {
     setIsVisible(false);
-    localStorage.setItem(storageKey, 'true');
+    try {
+      localStorage.setItem(storageKey, 'true');
+    } catch (err) {
+      console.error('Failed to save tour completion:', err);
+      // Still proceed if localStorage fails
+    }
     onComplete?.();
   };
 
