@@ -21,7 +21,7 @@ jobs:
         CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
         CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
         CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - name: Execute remote SSH commands using SSH key
         uses: appleboy/ssh-action@v1.0.3
@@ -31,7 +31,7 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           passphrase: ${{ secrets.DO_PASSPHRASE }}
-          envs: DATABASE_URL,FRONTEND_URL,CLERK_SECRET_KEY,VITE_CLERK_PUBLISHABLE_KEY,CLERK_PUBLISHABLE_KEY,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
+          envs: DATABASE_URL,FRONTEND_URL,CLERK_SECRET_KEY,VITE_CLERK_PUBLISHABLE_KEY,CLERK_PUBLISHABLE_KEY,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,GEMINI_API_KEY
           script: |
             set -e
             set -x 
