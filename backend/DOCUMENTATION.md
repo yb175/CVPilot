@@ -320,7 +320,123 @@ Uploads a resume file (PDF or DOCX) for the authenticated user. The system:
 
 ---
 
-### 4. Create User Preferences
+### 4. Get Resume with Parsed Data
+
+#### Description
+
+Retrieves the authenticated user's resume along with parsed data (if available). The endpoint supports polling for resume parsing completion—initially returns 202 (Accepted) while parsing is in progress, then returns 200 (OK) once parsing completes.
+
+**Polling Behavior:**
+- Immediately after upload: Returns 202 (parsing still in progress)
+- After parsing completes: Returns 200 with `parsedData` object
+- No resume uploaded: Returns 404
+
+#### Method & Route
+
+- **Method:** GET
+- **Route:** `/resume`
+
+#### Headers
+
+```json
+{
+  "Authorization": "Bearer <clerk_token>"
+}
+```
+
+#### Request
+
+No request body or query parameters.
+
+#### Success Response (Parsing Complete)
+
+- **Status Code:** 200 OK
+
+```json
+{
+  "message": "Resume parsed successfully",
+  "parsedData": {
+    "name": "John Doe",
+    "skills": ["JavaScript", "TypeScript", "React", "Node.js"],
+    "currentRole": "Senior Software Engineer",
+    "experienceYears": 5,
+    "seniority": "Senior",
+    "location": "San Francisco, CA",
+    "remote": true,
+    "techStack": {
+      "languages": ["JavaScript", "TypeScript", "Python"],
+      "frameworks": ["React", "Express", "Django"],
+      "tools": ["Docker", "Kubernetes", "AWS"]
+    },
+    "projects": [
+      {
+        "name": "Project A",
+        "description": "Description of project A",
+        "technologies": ["React", "Node.js"]
+      }
+    ],
+    "keywords": ["fullstack", "cloud-native", "agile"],
+    "education": {
+      "degree": "B.S. Computer Science",
+      "school": "University of California",
+      "year": "2019"
+    }
+  },
+  "uploadedAt": "2026-04-10T14:22:33.456Z",
+  "fileUrl": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/resume_abc123.pdf"
+}
+```
+
+#### Success Response (Parsing In Progress)
+
+- **Status Code:** 202 Accepted
+
+```json
+{
+  "message": "Resume uploaded but still parsing. Try again in a few seconds.",
+  "fileUrl": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/resume_abc123.pdf",
+  "uploadedAt": "2026-04-10T14:22:33.456Z"
+}
+```
+
+#### Error Responses
+
+##### 401 Unauthorized
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+##### 404 Not Found
+
+```json
+{
+  "error": "No resume found. Please upload a resume first."
+}
+```
+
+##### 500 Internal Server Error
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+#### Notes
+
+- **Polling Strategy:** Frontend should poll this endpoint after uploading a resume to check for parsing completion
+- **Status 202:** Indicates the resume is being processed asynchronously
+- **Parsed Data Format:** See `ParsedResume` data model below for schema details
+- **Null Fields:** Fields in `parsedData` may be `null` if the parser couldn't extract that information
+- **Retry Logic:** Recommended polling interval is 2-3 seconds until `parsedData` is populated
+- **Cloudinary URL:** The `fileUrl` is a permanent Cloudinary secure URL that can be used for downloading the original resume
+
+---
+
+### 5. Create User Preferences
 
 #### Description
 
@@ -642,13 +758,33 @@ Partially updates user preferences. Any omitted fields retain their current valu
 ```json
 {
   "id": "UUID (primary key)",
-  "userId": "string (Clerk user ID, unique)",
+  "userId": "string (Clerk user ID, unique foreign key to User.clerkId)",
   "fileUrl": "string (Cloudinary secure URL)",
   "publicId": "string (Cloudinary public ID for deletion)",
   "fileHash": "string (SHA-256 hash for duplicate detection)",
-  "parsedData": "JSON object (null until parsed)",
+  "parsedData": "ParsedResume | null (null until parsing completes)",
   "uploadedAt": "ISO 8601 timestamp",
   "updatedAt": "ISO 8601 timestamp"
+}
+```
+
+### ParsedResume
+
+The structure of parsed resume data extracted by the AI parser:
+
+```json
+{
+  "name": "string | null",
+  "skills": "string[] | null",
+  "currentRole": "string | null",
+  "experienceYears": "number | null",
+  "seniority": "enum('Intern', 'Junior', 'Mid', 'Senior') | null",
+  "location": "string | null",
+  "remote": "boolean | null",
+  "techStack": "object (map of strings) | null",
+  "projects": "any[] | null",
+  "keywords": "string[] | null",
+  "education": "object (map of strings) | null"
 }
 ```
 
@@ -656,7 +792,7 @@ Partially updates user preferences. Any omitted fields retain their current valu
 
 ```json
 {
-  "userId": "integer (primary key, foreign key to User)",
+  "userId": "integer (primary key, foreign key to User.id)",
   "seniority": "enum: INTERN | FULLTIME",
   "locationPreferences": "array: ONSITE | HYBRID | REMOTE",
   "createdAt": "ISO 8601 timestamp",
@@ -740,6 +876,7 @@ All error responses include:
 | ------ | ------- | ------------- |
 | 200 | OK | Successful request |
 | 201 | Created | Resource successfully created (POST) |
+| 202 | Accepted | Request accepted; processing asynchronously (parsing in progress) |
 | 400 | Bad Request | Invalid input, validation failure |
 | 401 | Unauthorized | Missing/invalid JWT token |
 | 404 | Not Found | Resource doesn't exist |
@@ -910,6 +1047,52 @@ Expected response:
 }
 ```
 
+#### Test Resume Upload
+
+```bash
+curl -X POST http://localhost:3000/resume \
+  -H "Authorization: Bearer YOUR_CLERK_TOKEN" \
+  -F "file=@/path/to/resume.pdf"
+```
+
+Expected response (new file):
+
+```json
+{
+  "message": "Resume uploaded",
+  "changed": true,
+  "fileUrl": "https://res.cloudinary.com/..."
+}
+```
+
+#### Test Get Parsed Resume
+
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" \
+  http://localhost:3000/resume
+```
+
+Expected response (if parsing complete):
+
+```json
+{
+  "message": "Resume parsed successfully",
+  "parsedData": { ... },
+  "uploadedAt": "2026-04-10T14:22:33.456Z",
+  "fileUrl": "https://res.cloudinary.com/..."
+}
+```
+
+Expected response (if parsing in progress):
+
+```json
+{
+  "message": "Resume uploaded but still parsing. Try again in a few seconds.",
+  "fileUrl": "https://res.cloudinary.com/...",
+  "uploadedAt": "2026-04-10T14:22:33.456Z"
+}
+```
+
 ---
 
 ## Project Structure
@@ -936,20 +1119,27 @@ backend/
 
 ## Future Enhancements
 
+### Recently Implemented
+
+- ✅ **Get Parsed Resume Data:** `GET /resume` endpoint now available to retrieve parsed resume with polling support
+- ✅ **User Preference Management:** Full CRUD for user preferences (seniority level, location preferences)
+- ✅ **Resume Upload Pipeline:** Complete upload, validation, and async parsing trigger
+
 ### Planned Features
 
-- **Resume Parsing Queue:** Integration with BullMQ for async parsing jobs
-- **Parsed Data Retrieval:** Endpoint to fetch parsed resume data
-- **Resume Deletion:** DELETE `/resume` endpoint for removing resumes
-- **Batch Operations:** Support multiple resumesper user (portfolio)
+- **Resume Parsing Queue:** Integration with BullMQ for managed async parsing jobs
+- **Resume Deletion:** `DELETE /resume` endpoint for removing resumes
+- **Batch Operations:** Support multiple resumes per user (portfolio/history)
 - **Analytics:** Endpoint for tracking resume updates and parsing success rates
 - **GraphQL API:** Alternative to REST for complex queries
+- **Webhooks:** Event notifications for parsing completion and other lifecycle events
 
 ### Known Limitations
 
 - **Single Resume:** Only one resume per user (previous one is overwritten)
-- **No Parsing Results:** Resume parsing is queued but results are not yet retrievable
+- **Parsing Timeout:** Parsing jobs are fire-and-forget (no timeout enforcement yet)
 - **File Size Limits:** Constrained by multer and Cloudinary tier limits
+- **No Resume History:** Previous resumes are deleted after new upload
 - **Manual Job Triggers:** Parsing is triggered ad-hoc (no scheduled re-parsing)
 
 ---
@@ -1012,6 +1202,6 @@ For API support or questions, contact the team at: `backend@cvpilot.dev`
 
 ---
 
-**Last Updated:** April 10, 2026  
-**API Version:** 1.0.0  
+**Last Updated:** April 11, 2026  
+**API Version:** 1.1.0  
 **Status:** Production-Ready
