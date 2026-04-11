@@ -1,31 +1,99 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@clerk/react";
 import { ResumeUpdateSection } from "../components/Profile/ResumeUpdateSection";
 import { PreferencesForm } from "../components/Profile/PreferencesForm";
 import { PreferencesSummary } from "../components/Profile/PreferencesSummary";
 import type { Seniority, LocationType } from "../components/Profile/PreferencesForm";
+import {
+  fetchPreferences,
+  savePreferences,
+  fetchResume,
+  uploadResume,
+} from "../lib/api";
  
 export default function ProfilePage() {
+  const { getToken } = useAuth();
   const [savedSeniority, setSavedSeniority] = useState<Seniority>("INTERN");
   const [savedLocations, setSavedLocations] = useState<LocationType[]>(["REMOTE"]);
-  const [resumeFileName, setResumeFileName] = useState<string>("resume_v1.pdf");
+  const [resumeFileName, setResumeFileName] = useState<string | undefined>(undefined);
+  const [resumeFileUrl, setResumeFileUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [saveError, setSaveError] = useState<string>("");
+  const [uploadError, setUploadError] = useState<string>("");
+
+  // Load existing preferences and resume on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const token = await getToken();
+        if (!token || cancelled) return;
+
+        const [prefs, resume] = await Promise.all([
+          fetchPreferences(token),
+          fetchResume(token),
+        ]);
+
+        if (!cancelled) {
+          if (prefs) {
+            setSavedSeniority(prefs.seniority);
+            setSavedLocations(prefs.locationPreferences);
+          }
+          if (resume) {
+            const parsedUrl = new URL(resume.fileUrl);
+            const filename = parsedUrl.pathname.split("/").pop();
+            setResumeFileName(filename ?? resume.fileUrl);
+            setResumeFileUrl(resume.fileUrl);
+          }
+        }
+      } catch (err) {
+        console.error("[ProfilePage] failed to load data:", err);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [getToken]);
  
-  const handlePreferencesSubmit = (seniority: Seniority, locations: LocationType[]) => {
+  const handlePreferencesSubmit = async (seniority: Seniority, locations: LocationType[]) => {
     setIsSaving(true);
-    setTimeout(() => {
-      setSavedSeniority(seniority);
-      setSavedLocations(locations);
+    setSaveError("");
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const saved = await savePreferences(token, {
+        seniority,
+        locationPreferences: locations,
+      });
+      setSavedSeniority(saved.seniority);
+      setSavedLocations(saved.locationPreferences);
+    } catch (err) {
+      console.error("[ProfilePage] failed to save preferences:", err);
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save preferences."
+      );
+    } finally {
       setIsSaving(false);
-    }, 800);
+    }
   };
  
-  const handleResumeReplace = (file: File) => {
+  const handleResumeReplace = async (file: File) => {
     setIsUploading(true);
-    setTimeout(() => {
+    setUploadError("");
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const result = await uploadResume(token, file);
       setResumeFileName(file.name);
+      if (result.fileUrl) setResumeFileUrl(result.fileUrl);
+    } catch (err) {
+      console.error("[ProfilePage] failed to upload resume:", err);
+      setUploadError(
+        err instanceof Error ? err.message : "Failed to upload resume."
+      );
+    } finally {
       setIsUploading(false);
-    }, 1000);
+    }
   };
  
   return (
@@ -74,17 +142,26 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <ResumeUpdateSection
             currentFileName={resumeFileName}
+            currentFileUrl={resumeFileUrl}
             onReplace={handleResumeReplace}
             isUploading={isUploading}
           />
- 
+
+          {uploadError && (
+            <p className="text-red-400 text-xs px-1">{uploadError}</p>
+          )}
+
           <PreferencesForm
             initialSeniority={savedSeniority}
             initialLocations={savedLocations}
             onSubmit={handlePreferencesSubmit}
             isSaving={isSaving}
           />
- 
+
+          {saveError && (
+            <p className="text-red-400 text-xs px-1">{saveError}</p>
+          )}
+
           <PreferencesSummary
             seniority={savedSeniority}
             locations={savedLocations}

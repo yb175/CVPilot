@@ -3,24 +3,41 @@ import { ResumeUpload } from '../components/Resume/ResumeUpload'
 import { StatusBadge, type ParsingStatus } from '../components/Resume/ParsingStatusBadge'
 // ↑ ParsingStatus is imported, NOT redefined here.
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@clerk/react'
+import { uploadResume } from '../lib/api'
  
 export function ResumePage() {
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState<string>("");
   const [status, setStatus] = useState<ParsingStatus>("IDLE");
+  const [uploadError, setUploadError] = useState<string>("");
  
-  const handleExtract = (f: File, text: string) => {
+  const handleExtract = async (f: File, text: string) => {
     setFile(f);
     setExtractedText(text);
-    setStatus("PARSED"); // was "DONE" — aligned to backend enum
-    console.log("Extracted text:", text);
+    setUploadError("");
+    setStatus("PROCESSING");
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      await uploadResume(token, f);
+      setStatus("PARSED");
+    } catch (err) {
+      console.error("[ResumePage] backend upload failed:", err);
+      setUploadError(
+        err instanceof Error ? err.message : "Upload to server failed."
+      );
+      setStatus("FAILED");
+    }
   };
  
   const reset = () => {
     setFile(null);
     setExtractedText("");
     setStatus("IDLE");
+    setUploadError("");
   };
  
   return (
@@ -112,10 +129,21 @@ export function ResumePage() {
               </div>
             )}
  
+            {/* Upload error */}
+            {uploadError && (
+              <p className="text-red-400 text-xs text-center">{uploadError}</p>
+            )}
+
             {/* CTA */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
               <p className="text-xs text-gray-600">
-                Text extracted and ready for AI matching.
+                {status === "PARSED"
+                  ? "Resume uploaded and queued for AI parsing."
+                  : status === "PROCESSING"
+                  ? "Uploading to server…"
+                  : status === "FAILED"
+                  ? "Upload failed. Please try again."
+                  : "Text extracted and ready for AI matching."}
               </p>
               <button
                 onClick={() => navigate('/profile')}
