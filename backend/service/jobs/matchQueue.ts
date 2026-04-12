@@ -8,9 +8,36 @@ import * as regexMatcher from "./regexJobMatcher.js";
 import * as jobMatchService from "./jobMatch.service.js";
 import * as cache from "./matchCache.js";
 
+// ===== Error Sanitization =====
 /**
- * Queue item for async job matching
+ * Sanitize internal error messages for client exposure
+ * Hides Prisma/LLM/stack details, returns generic safe message or specific known error
  */
+function sanitizeErrorMessage(rawError: string): string {
+  // Map known internal errors to safe client messages
+  if (
+    rawError.includes("PrismaClientKnownRequestError") ||
+    rawError.includes("Prisma") ||
+    rawError.includes("SQL")
+  ) {
+    return "Database error occurred during processing";
+  }
+  if (rawError.includes("LLM_TIMEOUT") || rawError.includes("timed out")) {
+    return "Processing took too long, please try again";
+  }
+  if (rawError.includes("API") || rawError.includes("api")) {
+    return "External service temporarily unavailable";
+  }
+  if (rawError.includes("timeout")) {
+    return "Processing timeout exceeded";
+  }
+  // Generic fallback for unknown errors
+  if (rawError.length > 100 || rawError.includes("at ") || rawError.includes("stack")) {
+    return "An internal error occurred during processing";
+  }
+  // Safe messages can pass through (e.g., "User not found or missing clerkId" is already generic)
+  return rawError;
+}
 interface QueueItem {
   queueId: string;
   userId: number;
@@ -92,17 +119,22 @@ class MatchQueue {
 
   /**
    * Mark queue item as failed
+   * Logs full error internally but stores sanitized message for client
    */
-  setError(queueId: string, error: string): void {
+  setError(queueId: string, error: string, internalDetails?: Record<string, unknown>): void {
     const item = this.queue.get(queueId);
     if (item) {
       item.status = "failed";
-      item.error = error;
+      // Sanitize error message before storing (client-facing)
+      item.error = sanitizeErrorMessage(error);
       item.completedAt = new Date();
 
+      // Log full error details internally for debugging
       logger.error("MATCH_FAILED", {
         queueId,
-        error,
+        sanitizedError: item.error,
+        rawError: error,
+        ...internalDetails,
         duration: item.completedAt.getTime() - item.createdAt.getTime(),
       });
     }
@@ -161,15 +193,37 @@ class MatchQueue {
               item.userId
             );
 
-            // Step 3: Persist to database
+            // Step 3: Validate complete coverage before persisting
+            const requestedJobIds = new Set(item.jobs.map((j) => j.job_id));
+            const matchedJobIds = new Set(finalResults.map((r) => r.jobId));
+            const missingJobs = Array.from(requestedJobIds).filter(
+              (jobId) => !matchedJobIds.has(jobId)
+            );
+
+            if (missingJobs.length > 0) {
+              const errorMsg = `Incomplete match results: ${missingJobs.length} of ${item.jobs.length} jobs unmatched`;
+              logger.warn("QUEUE_INCOMPLETE_RESULTS", {
+                queueId,
+                userId: item.userId,
+                requestedCount: item.jobs.length,
+                matchedCount: finalResults.length,
+                missingCount: missingJobs.length,
+              });
+              this.setError(queueId, "Processing could not complete for all jobs", {
+                missingJobCount: missingJobs.length,
+              });
+              continue;
+            }
+
+            // Step 4: Persist to database
             await jobMatchService.persistMatchResults(item.userId, finalResults);
 
-            // Step 4: Cache results
+            // Step 5: Cache results
             for (const result of finalResults) {
               cache.setInCache(item.userId, result.jobId, result);
             }
 
-            // Step 5: Mark as completed
+            // Step 6: Mark as completed
             this.setResults(queueId, finalResults);
 
             logger.info("QUEUE_ITEM_PROCESSED", {
@@ -185,9 +239,12 @@ class MatchQueue {
               queueId,
               userId: item.userId,
               error: errorMsg,
+              errorType: error instanceof Error ? error.constructor.name : typeof error,
             });
 
-            this.setError(queueId, errorMsg);
+            this.setError(queueId, errorMsg, {
+              errorType: error instanceof Error ? error.constructor.name : typeof error,
+            });
           }
         }
       }
