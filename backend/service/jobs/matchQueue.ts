@@ -311,6 +311,7 @@ const matchQueue = new MatchQueue();
 // ===== Helper: Merge LLM + Regex Fallback =====
 /**
  * Compare LLM and Regex results, fallback for missing jobs
+ * Filters LLM results to only include requested job IDs (prevents hallucinated jobIds)
  */
 async function mergeWithConditionalRegexFallback(
   llmResults: MatchResult[],
@@ -318,9 +319,18 @@ async function mergeWithConditionalRegexFallback(
   jobs: NormalizedJob[],
   userId: number
 ): Promise<MatchResult[]> {
+  // Build set of requested job IDs for validation
+  const requestedJobIds = new Set(jobs.map((j) => j.job_id));
+
+  // Filter LLM results: valid scores AND requested job IDs only (prevent hallucinated IDs)
   const llmByJob = new Map<string, MatchResult>(
     llmResults
-      .filter((r) => Number.isFinite(r.score) && Number.isFinite(r.confidence))
+      .filter(
+        (r) =>
+          Number.isFinite(r.score) &&
+          Number.isFinite(r.confidence) &&
+          requestedJobIds.has(r.jobId) // Only include if jobId was in the request
+      )
       .map((result) => [result.jobId, { ...result, source: "llm" }])
   );
 

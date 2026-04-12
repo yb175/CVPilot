@@ -92,9 +92,9 @@ export async function deleteJobMatch(userId: number, jobId: string) {
 }
 
 /**
- * Persist multiple match results to database
+ * Persist multiple match results to database atomically
  * Upserts each match by composite key (userId + jobId)
- * Includes confidence score in new updates
+ * Wraps in transaction so batch is all-or-nothing
  */
 export async function persistMatchResults(
   userId: number,
@@ -106,31 +106,32 @@ export async function persistMatchResults(
   }>
 ) {
   try {
-    const promises = results.map((result) =>
-      prisma.job_match.upsert({
-        where: {
-          userId_jobId: {
+    // Wrap all upserts in a single transaction for atomicity
+    return await prisma.$transaction(
+      results.map((result) =>
+        prisma.job_match.upsert({
+          where: {
+            userId_jobId: {
+              userId,
+              jobId: result.jobId,
+            },
+          },
+          create: {
             userId,
             jobId: result.jobId,
+            score: result.score,
+            confidence: result.confidence,
+            reason: result.reason,
           },
-        },
-        create: {
-          userId,
-          jobId: result.jobId,
-          score: result.score,
-          confidence: result.confidence,
-          reason: result.reason,
-        },
-        update: {
-          score: result.score,
-          confidence: result.confidence,
-          reason: result.reason,
-          updatedAt: new Date(),
-        },
-      })
+          update: {
+            score: result.score,
+            confidence: result.confidence,
+            reason: result.reason,
+            updatedAt: new Date(),
+          },
+        })
+      )
     );
-
-    return await Promise.all(promises);
   } catch (error) {
     console.error("Persist match results error:", error);
     throw new Error("Failed to persist match results");
