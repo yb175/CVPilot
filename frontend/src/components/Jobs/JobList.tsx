@@ -4,7 +4,7 @@ import type { Job } from "../../data/MockJobs";
 
 interface JobListProps {
   jobs: Job[];
-  onJobClick: (jobId: string) => void;
+  onJobClick: (job: Job) => void;
 }
 
 const JOBS_PER_PAGE = 5;
@@ -41,14 +41,7 @@ export function JobList({ jobs, onJobClick }: JobListProps) {
         {paginatedJobs.map((job, index) => (
           <JobCard
             key={job.jobId}
-            jobId={job.jobId}
-            title={job.title}
-            company={job.company}
-            location={job.location}
-            locationType={job.locationType}
-            seniority={job.seniority}
-            score={job.score}
-            reason={job.reason}
+            job={job}
             index={startIndex + index}
             onClick={onJobClick}
           />

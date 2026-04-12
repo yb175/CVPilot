@@ -11,6 +11,7 @@ export interface Job {
   skills: string[];
   postedAt: string;
   salary?: string;
+  jobUrl?: string;
 }
 
 export const MOCK_JOBS: Job[] = [

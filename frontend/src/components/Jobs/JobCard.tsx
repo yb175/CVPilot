@@ -1,17 +1,11 @@
 import { JobMatchBadge } from "./JobMatchBadge";
 import { useBookmarks } from "../ui/BookmarksProvider";
+import type { Job } from "../../data/MockJobs";
 
 interface JobCardProps {
-  jobId: string;
-  title: string;
-  company: string;
-  location: string;
-  locationType: "REMOTE" | "HYBRID" | "ONSITE";
-  seniority: "INTERN" | "FULLTIME";
-  score: string;
-  reason: string;
+  job: Job;
   index: number;
-  onClick: (jobId: string) => void;
+  onClick: (job: Job) => void;
 }
 
 const LOCATION_STYLES: Record<string, string> = {
@@ -26,32 +20,25 @@ const SENIORITY_STYLES: Record<string, string> = {
 };
 
 export function JobCard({
-  jobId,
-  title,
-  company,
-  location,
-  locationType,
-  seniority,
-  score,
-  reason,
+  job,
   index,
   onClick,
 }: JobCardProps) {
   const { isBookmarked, addBookmark, removeBookmark } = useBookmarks();
-  const bookmarked = isBookmarked(jobId);
+  const bookmarked = isBookmarked(job.jobId);
 
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (bookmarked) {
-      removeBookmark(jobId);
+      removeBookmark(job.jobId);
     } else {
-      addBookmark(jobId);
+      addBookmark(job.jobId);
     }
   };
 
   return (
     <article
-      onClick={() => onClick(jobId)}
+      onClick={() => onClick(job)}
       className="group relative rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.14] transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-lg hover:scale-[1.01]"
       style={{ animationDelay: `${index * 60}ms` }}
     >
@@ -71,34 +58,34 @@ export function JobCard({
               className="text-base sm:text-lg font-semibold text-[#e8e8e8] group-hover:text-white transition-colors leading-snug truncate"
               style={{ fontFamily: "'Georgia', serif" }}
             >
-              {title}
+              {job.title}
             </h3>
             <p className="text-sm text-gray-400 mt-0.5">
-              {company}
+              {job.company}
               <span className="text-gray-600 mx-1.5">·</span>
-              {location}
+              {job.location}
             </p>
 
             {/* Badges */}
             <div className="flex flex-wrap gap-1.5 mt-2.5">
-              <span className={`inline-flex items-center text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-md border ${LOCATION_STYLES[locationType]}`}>
-                {locationType}
+              <span className={`inline-flex items-center text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-md border ${LOCATION_STYLES[job.locationType]}`}>
+                {job.locationType}
               </span>
-              <span className={`inline-flex items-center text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-md border ${SENIORITY_STYLES[seniority]}`}>
-                {seniority}
+              <span className={`inline-flex items-center text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-md border ${SENIORITY_STYLES[job.seniority]}`}>
+                {job.seniority}
               </span>
             </div>
 
             {/* Reason snippet */}
             <p className="text-xs text-gray-500 mt-3 leading-relaxed line-clamp-2 max-w-xl">
-              {reason}
+              {job.reason}
             </p>
           </div>
 
           {/* Right actions */}
           <div className="flex-shrink-0 flex flex-col items-end gap-2">
             {/* Score ring */}
-            <JobMatchBadge score={score} size="sm" />
+            <JobMatchBadge score={job.score} size="sm" />
 
             {/* Bookmark button */}
             <button

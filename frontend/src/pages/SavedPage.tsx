@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
+import type { Job } from "../data/MockJobs";
 import { JobList } from "../components/Jobs/JobList";
-import { PageContainer, GridBackground, Container, Button, PageTransition, useBookmarks } from "../components/ui";
+import { PageContainer, GridBackground, Container, Button, PageTransition, useBookmarks, useToast } from "../components/ui";
 import { MOCK_JOBS } from "../data/MockJobs";
 
 interface SavedPageProps {
@@ -10,13 +11,22 @@ interface SavedPageProps {
 export default function SavedPage({ onNavigateToJob }: SavedPageProps) {
   const navigate = useNavigate();
   const { bookmarks } = useBookmarks();
+  const { addToast } = useToast();
 
   // Filter jobs to only show bookmarked ones
   const savedJobs = MOCK_JOBS.filter(job => bookmarks.has(job.jobId));
   const savedCount = savedJobs.length;
 
-  const handleNavigateToJob = (jobId: string) => {
-    onNavigateToJob?.(jobId);
+  const handleJobClick = (job: Job) => {
+    if (job.jobUrl) {
+      window.open(job.jobUrl, "_blank");
+    } else {
+      addToast({
+        message: "Job URL not available",
+        variant: "warning",
+      });
+    }
+    onNavigateToJob?.(job.jobId);
   };
 
   return (
@@ -84,7 +94,7 @@ export default function SavedPage({ onNavigateToJob }: SavedPageProps) {
               </div>
 
               {/* Job List */}
-              <JobList jobs={savedJobs} onJobClick={handleNavigateToJob} />
+              <JobList jobs={savedJobs} onJobClick={handleJobClick} />
 
               {/* Back Button */}
               <div className="mt-8 flex justify-center">

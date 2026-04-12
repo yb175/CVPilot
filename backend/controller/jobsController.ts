@@ -15,6 +15,35 @@ import { normalizeActiveJobsDbJob } from "../service/jobs/jobNormalizer.js";
 import { syncClerkUser } from "../service/user.service.js";
 
 /**
+ * Extract job URL from raw job data
+ * Tries common URL field names used by job APIs
+ */
+function extractJobUrl(rawData: Record<string, any> | undefined): string | undefined {
+  if (!rawData) return undefined;
+  
+  const urlFields = [
+    "apply_url",
+    "link_url",
+    "job_url",
+    "url",
+    "apply_link",
+    "link",
+    "job_link",
+    "external_url",
+    "externalUrl",
+  ];
+  
+  for (const field of urlFields) {
+    const value = rawData[field];
+    if (typeof value === "string" && value.startsWith("http")) {
+      return value;
+    }
+  }
+  
+  return undefined;
+}
+
+/**
  * POST /jobs/match
  * Fetch jobs from Active Jobs API and match against user's resume
  * Returns ranked jobs with scores + confidence
@@ -188,17 +217,32 @@ export async function matchJobsHandler(req: Request, res: Response): Promise<voi
       duration,
     });
 
+    // Create a map for quick job lookup
+    const jobsMap = new Map(
+      normalizedJobs.map((job) => [job.job_id, job])
+    );
+
     res.json({
       method: "sync",
       source: sourceUsed,
       jobsFetched: normalizedJobs.length,
       matchedJobs: finalResults.length,
-      results: finalResults.slice(0, 5).map((r) => ({
-        jobId: r.jobId,
-        score: r.score,
-        confidence: r.confidence,
-        reason: r.reason,
-      })),
+      results: finalResults.slice(0, 5).map((r) => {
+        const job = jobsMap.get(r.jobId);
+        const jobUrl = extractJobUrl(job?.rawData as any);
+        return {
+          jobId: r.jobId,
+          title: job?.title || "Job Title",
+          company: job?.company || "Company",
+          location: job?.location || "Remote",
+          description: job?.description || "",
+          skills: job?.skills || [],
+          jobUrl,
+          score: r.score,
+          confidence: r.confidence,
+          reason: r.reason,
+        };
+      }),
       duration,
     });
   } catch (error) {

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobList } from "../components/Jobs/JobList";
-import { MOCK_JOBS } from "../data/MockJobs";
+import type { Job } from "../data/MockJobs";
 import { PageContainer, GridBackground, Container, Button, PageTransition, useToast } from "../components/ui";
 import { checkResumeExists } from "../services/resume";
+import { fetchMatchedJobs } from "../services/jobs";
 import { useApi } from "../lib/fetcher";
 
 interface JobsPageProps {
@@ -11,6 +12,9 @@ interface JobsPageProps {
 }
 
 export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isRefetching, setIsRefetching] = useState(false);
   const [hasResume, setHasResume] = useState(false);
   const [isCheckingResume, setIsCheckingResume] = useState(true);
@@ -40,21 +44,84 @@ export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
     checkResume();
   }, []);
 
-  // Only show real data: job count
-  // Note: topScore and avgScore removed - requires actual AI matching we don't have access to
-  const jobCount = MOCK_JOBS.length;
+  // Fetch matched jobs from backend when user has resume
+  useEffect(() => {
+    if (!hasResume || isCheckingResume) {
+      return;
+    }
+
+    const loadJobs = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const matchedJobs = await fetchMatchedJobs(fetchRef.current);
+        setJobs(matchedJobs);
+
+        if (matchedJobs.length === 0) {
+          addToast({
+            message: "No matching jobs found. Try uploading a different resume.",
+            variant: "info",
+          });
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch jobs";
+        setError(errorMessage);
+        addToast({
+          message: `Error: ${errorMessage}`,
+          variant: "error",
+        });
+        console.error("Job fetching error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadJobs();
+  }, [hasResume, isCheckingResume, addToast]);
+
+  const jobCount = jobs.length;
 
   const handleRefetchJobs = async () => {
     setIsRefetching(true);
-    // TODO: Implement API call to refetch jobs based on current resume
-    // This would call the backend to re-run the matching algorithm
-    setTimeout(() => {
-      setIsRefetching(false);
+    setError(null);
+
+    try {
+      const matchedJobs = await fetchMatchedJobs(fetchRef.current);
+      setJobs(matchedJobs);
       addToast({
-        message: 'Job list refreshed! New matches may be available.',
-        variant: 'success',
+        message:
+          matchedJobs.length > 0
+            ? `Found ${matchedJobs.length} matching jobs!`
+            : "No new matching jobs found.",
+        variant: "success",
       });
-    }, 1500);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to refresh jobs";
+      setError(errorMessage);
+      addToast({
+        message: `Error: ${errorMessage}`,
+        variant: "error",
+      });
+      console.error("Job refresh error:", err);
+    } finally {
+      setIsRefetching(false);
+    }
+  };
+
+  // Handle job click - redirect to job URL
+  const handleJobClick = (job: Job) => {
+    if (job.jobUrl) {
+      window.open(job.jobUrl, "_blank");
+    } else {
+      addToast({
+        message: "Job URL not available",
+        variant: "warning",
+      });
+    }
+    onNavigateToJob(job.jobId);
   };
 
   return (
@@ -86,9 +153,6 @@ export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
                   matches.
                 </em>
               </h1>
-              <p className="text-text-secondary text-sm sm:text-base leading-relaxed max-w-md">
-                Ranked by neural match score. Top 10 opportunities tailored to your resume and preferences.
-              </p>
             </div>
 
             {/* Action Buttons */}
@@ -140,6 +204,43 @@ export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
               Add Resume →
             </Button>
           </div>
+        ) : isLoading ? (
+          /* Show loading state */
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin">
+              <svg className="h-8 w-8 text-accent-bright" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            </div>
+          </div>
+        ) : error ? (
+          /* Show error state */
+          <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto">
+            <div className="mb-6 p-4 rounded-full bg-red-500/10">
+              <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-text-primary mb-2">Unable to Load Jobs</h2>
+            <p className="text-text-secondary mb-6">{error}</p>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRefetchJobs}
+                variant="primary"
+                size="md"
+              >
+                Try Again
+              </Button>
+              <Button
+                onClick={() => navigate("/profile")}
+                variant="secondary"
+                size="md"
+              >
+                Update Resume
+              </Button>
+            </div>
+          </div>
         ) : (
           /* Show job list */
           <>
@@ -150,7 +251,7 @@ export default function JobsPage({ onNavigateToJob }: JobsPageProps) {
             </div>
 
             {/* Job List */}
-            <JobList jobs={MOCK_JOBS} onJobClick={onNavigateToJob} />
+            <JobList jobs={jobs} onJobClick={handleJobClick} />
           </>
         )}
       </Container>
