@@ -8,6 +8,7 @@ import authRouter from "./route/auth.route.js";
 import preferencesRouter from "./route/preferences.route.js";
 import systemRouter from "./route/system.route.js";
 import resumeRoute from "./route/resumeRoute.js";
+import jobsRoute from "./route/jobsRoute.js";
 import cors from "cors";
 import { initializeGeminiClient } from "./service/geminiClient.js";
 
@@ -42,6 +43,7 @@ app.use(clerkMiddleware());
 // 4. Now routes can use getAuth()
 app.use("/", systemRouter);
 app.use("/resume", resumeRoute);
+app.use("/jobs", jobsRoute);
 app.use("/auth", authRouter);
 app.use("/preferences", preferencesRouter);
 

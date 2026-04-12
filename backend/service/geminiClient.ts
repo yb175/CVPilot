@@ -64,7 +64,7 @@ export const callGeminiForResumeParsing = async (
   });
 
   // First attempt: Parse resume
-  const firstAttempt = await callGemini(
+  const firstAttempt = await callGeminiInternal(
     RESUME_PARSING_PROMPT.replace("${resumeText}", resumeText),
     resumeId,
     1,
@@ -89,7 +89,7 @@ export const callGeminiForResumeParsing = async (
       firstAttempt.rawText
     ).replace("${errors}", "Invalid JSON format - unable to parse");
 
-    const repairAttempt = await callGemini(
+    const repairAttempt = await callGeminiInternal(
       repairPrompt,
       resumeId,
       2,
@@ -130,7 +130,7 @@ export const callGeminiForResumeParsing = async (
 /**
  * Internal: Call Gemini API with timeout
  */
-async function callGemini(
+async function callGeminiInternal(
   prompt: string,
   resumeId: string,
   attempt: number,
@@ -222,3 +222,75 @@ async function callGemini(
     };
   }
 }
+
+/**
+ * Call Gemini for job matching
+ * Returns JSON array of job matches
+ */
+export const callGemini = async (prompt: string, timeoutMs = 30000): Promise<string> => {
+  if (!genAI) {
+    throw new Error("Gemini client not initialized");
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const response = await Promise.race([
+      model.generateContent(prompt),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("LLM_CALL_TIMEOUT")), timeoutMs)
+      ),
+    ]);
+
+    const text = response.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    if (!text) {
+      throw new Error("Empty response from Gemini");
+    }
+
+    // Strip markdown code blocks if present
+    let jsonText = text.trim();
+    const jsonCodeBlockMatch = jsonText.match(/^```(?:json)?\n?([\s\S]*)\n?```$/);
+    if (jsonCodeBlockMatch) {
+      jsonText = jsonCodeBlockMatch[1].trim();
+    }
+
+    return jsonText;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Call Gemini for ATS optimization prompt generation
+ * Returns formatted text (not JSON)
+ */
+export const callGeminiForATSOptimization = async (
+  prompt: string,
+  timeoutMs = 20000
+): Promise<string> => {
+  if (!genAI) {
+    throw new Error("Gemini client not initialized");
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const response = await Promise.race([
+      model.generateContent(prompt),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("LLM_CALL_TIMEOUT")), timeoutMs)
+      ),
+    ]);
+
+    const text = response.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    if (!text) {
+      throw new Error("Empty response from Gemini");
+    }
+
+    return text.trim();
+  } catch (error) {
+    throw error;
+  }
+};

@@ -4,6 +4,14 @@ export interface RawJob {
   rawData: Record<string, unknown>;
 }
 
+export interface JobFetchParams {
+  offset?: number;
+  titleFilter?: string;
+  locationFilter?: string;
+  descriptionType?: "text" | "html";
+  limit?: number;
+}
+
 export interface JobProvider {
-  fetchJobs(): Promise<RawJob[]>;
+  fetchJobs(params?: JobFetchParams): Promise<RawJob[]>;
 }

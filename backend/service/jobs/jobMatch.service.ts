@@ -8,7 +8,7 @@ import prisma from "../../lib/prisma.js";
 export async function upsertJobMatch(
   userId: number,
   jobId: string,
-  score: string,
+  score: number,
   reason: string
 ) {
   try {
@@ -88,5 +88,109 @@ export async function deleteJobMatch(userId: number, jobId: string) {
   } catch (error) {
     console.error("Job match delete error:", error);
     throw new Error("Failed to delete job match");
+  }
+}
+
+/**
+ * Persist multiple match results to database
+ * Upserts each match by composite key (userId + jobId)
+ * Includes confidence score in new updates
+ */
+export async function persistMatchResults(
+  userId: number,
+  results: Array<{
+    jobId: string;
+    score: number;
+    confidence: number;
+    reason: string;
+  }>
+) {
+  try {
+    const promises = results.map((result) =>
+      prisma.job_match.upsert({
+        where: {
+          userId_jobId: {
+            userId,
+            jobId: result.jobId,
+          },
+        },
+        create: {
+          userId,
+          jobId: result.jobId,
+          score: result.score,
+          confidence: result.confidence,
+          reason: result.reason,
+        },
+        update: {
+          score: result.score,
+          confidence: result.confidence,
+          reason: result.reason,
+          updatedAt: new Date(),
+        },
+      })
+    );
+
+    return await Promise.all(promises);
+  } catch (error) {
+    console.error("Persist match results error:", error);
+    throw new Error("Failed to persist match results");
+  }
+}
+
+/**
+ * Get matched jobs for a user, sorted by score (descending)
+ * Optionally filter by minimum confidence
+ */
+export async function getMatchedJobs(userId: number, minConfidence?: number) {
+  try {
+    const matches = await prisma.job_match.findMany({
+      where: {
+        userId,
+        ...(minConfidence !== undefined && {
+          confidence: {
+            gte: minConfidence,
+          },
+        }),
+      },
+      include: {
+        job: true,
+      },
+      orderBy: {
+        score: "desc",
+      },
+    });
+
+    // Attach match metadata to each job
+    return matches.map((match) => ({
+      ...match.job,
+      matchScore: match.score,
+      matchConfidence: match.confidence,
+      matchReason: match.reason,
+    }));
+  } catch (error) {
+    console.error("Get matched jobs error:", error);
+    throw new Error("Failed to fetch matched jobs");
+  }
+}
+
+/**
+ * Get a specific match result
+ */
+export async function getJobMatch(userId: number, jobId: string) {
+  try {
+    return await prisma.job_match.findUnique({
+      where: {
+        userId_jobId: {
+          userId,
+          jobId,
+        },
+      },
+      include: {
+        job: true,
+      },
+    });
+  } catch (error) {
+    console.error("Get job match error:", error);
+    throw new Error("Failed to fetch job match");
   }
 }

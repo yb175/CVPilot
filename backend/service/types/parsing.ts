@@ -86,3 +86,51 @@ export interface FallbackParsingOptions {
   extractSkills?: boolean; // Default: true
   extractEducation?: boolean; // Default: true
 }
+
+/**
+ * =====================================
+ * 🎯 Job Matching Types
+ * =====================================
+ */
+
+/**
+ * Source of match score (LLM, Regex, or Fallback)
+ */
+/**
+ * Source of match score (LLM, Regex, or Fallback)
+ */
+export type MatchSource = "llm" | "regex" | "llm_fallback";
+
+/**
+ * Result of a single job match
+ */
+export interface MatchResult {
+  jobId: string; // Job ID from DB
+  score: number; // 0-100 scoring
+  confidence: number; // 0-1 confidence
+  reason: string; // <200 chars explanation
+  source?: MatchSource; // Which method scored it (for debugging)
+}
+
+/**
+ * Input for LLM matching
+ */
+export interface LLMMatchInput {
+  resume: ParsedResume;
+  jobs: NormalizedJob[];
+}
+
+/**
+ * Normalized job data (from provider or DB)
+ */
+export interface NormalizedJob {
+  job_id: string; // Primary key from Job table
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  source: string; // 'active_jobs_db', 'greenhouse', etc.
+  externalId: string; // External API ID
+  skills: string[]; // Extracted/normalized skills
+  rawData?: any; // Full original API response (JsonValue from Prisma, can be null)
+}

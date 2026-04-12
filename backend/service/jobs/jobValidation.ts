@@ -6,7 +6,7 @@ const NormalizedJobSchema = z.object({
   company: z.string().min(1, "Company required"),
   location: z.string().min(1, "Location required"),
   description: z.string(),
-  source: z.enum(["adzuna", "greenhouse", "lever", "remotive"]),
+  source: z.enum(["active_jobs_db", "greenhouse", "lever", "remotive"]),
   externalId: z.string().min(1, "External ID required"),
   skills: z.array(z.string()),
   rawData: z.record(z.string(), z.any()),

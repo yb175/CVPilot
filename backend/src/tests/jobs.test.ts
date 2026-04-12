@@ -40,7 +40,7 @@ async function runTests() {
     const jobMatch = await upsertJobMatch(
       testUser.id,
       createdJob.job_id,
-      "0.87",
+      0.87,
       "Skills match: React, TypeScript expertise aligns with requirements"
     );
     console.log(`✅ Job match created`);

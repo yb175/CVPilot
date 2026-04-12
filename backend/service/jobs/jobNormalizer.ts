@@ -13,22 +13,67 @@ export interface NormalizedJob {
 }
 
 /**
- * Normalize Adzuna raw job to our schema
+ * Normalize Active Jobs DB raw job to our schema
  * NO AI, NO transformation - just field mapping
  */
-export function normalizeAdzunaJob(rawJob: RawJob): NormalizedJob {
+export function normalizeActiveJobsDbJob(rawJob: RawJob): NormalizedJob {
   const raw = rawJob.rawData as any;
 
+  const title =
+    firstString(raw.title, raw.job_title, raw.position, raw.role) || "Untitled";
+  const company =
+    firstString(
+      raw.company,
+      raw.company_name,
+      raw.organization,
+      raw.hiring_company,
+      raw.employer_name,
+      raw.employer
+    ) || "Unknown Company";
+  const location =
+    firstString(
+      raw.location,
+      raw.location_name,
+      raw.city,
+      raw.country,
+      raw.candidate_required_location,
+      raw.remote_location
+    ) || "Remote";
+  const description =
+    firstString(raw.description, raw.description_text, raw.job_description, raw.summary) || "";
+
   return {
-    title: raw.title || "Untitled",
-    company: raw.company?.display_name || "Unknown Company",
-    location: raw.location?.display_name || "Remote",
-    description: raw.description || "",
-    source: "adzuna",
+    title,
+    company,
+    location,
+    description,
+    source: "active_jobs_db",
     externalId: rawJob.externalId,
-    skills: extractSkillsFromText(raw.title + " " + (raw.description || "")),
+    skills: extractSkillsFromText(`${title} ${description}`),
     rawData: raw,
   };
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+
+    if (value && typeof value === "object") {
+      const nested = value as Record<string, unknown>;
+      const nestedDisplayName = nested.display_name;
+      if (typeof nestedDisplayName === "string" && nestedDisplayName.trim().length > 0) {
+        return nestedDisplayName;
+      }
+      const nestedName = nested.name;
+      if (typeof nestedName === "string" && nestedName.trim().length > 0) {
+        return nestedName;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**

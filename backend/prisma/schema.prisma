@@ -70,13 +70,16 @@ model Job {
 }
 
 model Job_match {
-  userId  Int
-  jobId   String
-  score   String
-  reason  String
+  userId      Int
+  jobId       String
+  score       Float      // Changed from String: 0-100
+  confidence  Float?     // New: 0-1 confidence score
+  reason      String     // <200 chars explanation
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job     Job     @relation(fields: [jobId], references: [job_id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job         Job        @relation(fields: [jobId], references: [job_id], onDelete: Cascade)
 
   @@id([userId, jobId])
   @@index([userId])
