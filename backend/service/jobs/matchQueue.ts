@@ -1,6 +1,12 @@
 import { randomUUID } from "crypto";
 import type { MatchResult, NormalizedJob } from "../types/parsing.js";
+import type { ParsedResume } from "../../validators/resume.schema.js";
 import { logger } from "../../lib/logger.js";
+import prisma from "../../lib/prisma.js";
+import * as llmMatcherV2 from "./llmJobMatcherV2.js";
+import * as regexMatcher from "./regexJobMatcher.js";
+import * as jobMatchService from "./jobMatch.service.js";
+import * as cache from "./matchCache.js";
 
 /**
  * Queue item for async job matching
@@ -104,7 +110,7 @@ class MatchQueue {
 
   /**
    * Process queue items (background worker)
-   * This would be called periodically or triggered by events
+   * Fetches resume, runs LLM + regex fallback, persists results
    */
   async processQueue(): Promise<void> {
     if (this.processing) return;
@@ -114,24 +120,75 @@ class MatchQueue {
     try {
       for (const [queueId, item] of this.queue.entries()) {
         if (item.status === "queued") {
-          item.status = "processing";
+          try {
+            item.status = "processing";
 
-          logger.info("MATCH_PROCESSING", {
-            queueId,
-            userId: item.userId,
-            jobCount: item.jobs.length,
-          });
+            logger.info("MATCH_PROCESSING", {
+              queueId,
+              userId: item.userId,
+              jobCount: item.jobs.length,
+            });
 
-          // Here, we would call the actual matching logic
-          // For now, this is a placeholder
-          // In real implementation, this would call matchJobsWithLLM / regex
-          // and then call setResults or setError
+            // Fetch user's resume
+            const user = await prisma.user.findUnique({
+              where: { id: item.userId },
+            });
 
-          // Simulate async work
-          await new Promise((resolve) => setTimeout(resolve, 100));
+            if (!user?.clerkId) {
+              throw new Error("User not found or missing clerkId");
+            }
 
-          // This is where results would be set:
-          // this.setResults(queueId, results);
+            const resume = await prisma.resume.findFirst({
+              where: { userId: user.clerkId },
+            });
+
+            if (!resume?.parsedData) {
+              throw new Error("Resume not found or not yet parsed");
+            }
+
+            // Step 1: Run LLM matcher (v2)
+            const llmResults = await llmMatcherV2.matchJobsWithLLMV2(
+              resume.parsedData as ParsedResume,
+              item.jobs,
+              item.userId
+            );
+
+            // Step 2: Merge with regex fallback for missing jobs
+            const finalResults = await mergeWithConditionalRegexFallback(
+              llmResults,
+              resume.parsedData as ParsedResume,
+              item.jobs,
+              item.userId
+            );
+
+            // Step 3: Persist to database
+            await jobMatchService.persistMatchResults(item.userId, finalResults);
+
+            // Step 4: Cache results
+            for (const result of finalResults) {
+              cache.setInCache(item.userId, result.jobId, result);
+            }
+
+            // Step 5: Mark as completed
+            this.setResults(queueId, finalResults);
+
+            logger.info("QUEUE_ITEM_PROCESSED", {
+              queueId,
+              userId: item.userId,
+              resultsCount: finalResults.length,
+            });
+          } catch (error) {
+            const errorMsg =
+              error instanceof Error ? error.message : String(error);
+
+            logger.error("QUEUE_ITEM_PROCESSING_FAILED", {
+              queueId,
+              userId: item.userId,
+              error: errorMsg,
+            });
+
+            this.setError(queueId, errorMsg);
+          }
         }
       }
     } catch (error) {
@@ -193,6 +250,46 @@ class MatchQueue {
 
 // Singleton instance
 const matchQueue = new MatchQueue();
+
+// ===== Helper: Merge LLM + Regex Fallback =====
+/**
+ * Compare LLM and Regex results, fallback for missing jobs
+ */
+async function mergeWithConditionalRegexFallback(
+  llmResults: MatchResult[],
+  resume: ParsedResume,
+  jobs: NormalizedJob[],
+  userId: number
+): Promise<MatchResult[]> {
+  const llmByJob = new Map<string, MatchResult>(
+    llmResults
+      .filter((r) => Number.isFinite(r.score) && Number.isFinite(r.confidence))
+      .map((result) => [result.jobId, { ...result, source: "llm" }])
+  );
+
+  const missingJobs = jobs.filter((job) => !llmByJob.has(job.job_id));
+  if (missingJobs.length === 0) {
+    return Array.from(llmByJob.values()).sort((a, b) => b.score - a.score);
+  }
+
+  logger.warn("LLM_RESULTS_INCOMPLETE_USING_REGEX_FALLBACK_QUEUE", {
+    userId,
+    llmCount: llmByJob.size,
+    totalJobs: jobs.length,
+    fallbackJobs: missingJobs.length,
+  });
+
+  const regexResults = regexMatcher.matchJobsWithRegex(resume, missingJobs);
+
+  for (const regexResult of regexResults) {
+    llmByJob.set(regexResult.jobId, {
+      ...regexResult,
+      source: "regex",
+    });
+  }
+
+  return Array.from(llmByJob.values()).sort((a, b) => b.score - a.score);
+}
 
 // Periodic cleanup (every 30 minutes)
 setInterval(() => {
