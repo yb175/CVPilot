@@ -1,7 +1,7 @@
 // src/lib/fetcher.ts
 
 import { useAuth } from "@clerk/react";
-import { API_BASE_URL } from "./api";
+import { buildApiUrl } from "./api";
 
 export const useApi = () => {
   const { getToken } = useAuth();
@@ -12,7 +12,7 @@ export const useApi = () => {
   ) => {
     const token = await getToken();
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const res = await fetch(buildApiUrl(endpoint), {
       ...options,
       headers: {
         ...(options.headers || {}),

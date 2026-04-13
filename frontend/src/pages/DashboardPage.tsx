@@ -1,5 +1,6 @@
 import { useUser, useClerk, useAuth } from '@clerk/react'
 import { useState } from 'react'
+import { buildApiUrl } from '../lib/api'
 
 export function DashboardPage() {
   const { user } = useUser()
@@ -15,8 +16,7 @@ export function DashboardPage() {
     try {
       const authToken = await getToken()
 
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"
-      const res = await fetch(`${backendUrl}/preferences`, {
+      const res = await fetch(buildApiUrl('/preferences'), {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
