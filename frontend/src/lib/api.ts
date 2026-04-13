@@ -1,7 +1,20 @@
 const DEFAULT_API_BASE_URL = "http://localhost:3000";
 
+const withProtocolIfMissing = (value: string): string => {
+	if (/^[a-z][a-z\d+.-]*:\/\//i.test(value)) {
+		return value;
+	}
+
+	return `http://${value}`;
+};
+
 const normalizeApiBaseUrl = (rawBaseUrl: string): string => {
-	const baseWithoutTrailingSlash = rawBaseUrl.replace(/\/+$/, "");
+	const trimmed = rawBaseUrl.trim();
+	if (!trimmed) {
+		return DEFAULT_API_BASE_URL;
+	}
+
+	const baseWithoutTrailingSlash = withProtocolIfMissing(trimmed).replace(/\/+$/, "");
 
 	try {
 		const parsed = new URL(baseWithoutTrailingSlash);
@@ -18,7 +31,7 @@ const normalizeApiBaseUrl = (rawBaseUrl: string): string => {
 		parsed.pathname = parsed.pathname.replace(/\/+$/, "") || "/";
 		return `${parsed.origin}${parsed.pathname === "/" ? "" : parsed.pathname}`;
 	} catch {
-		return baseWithoutTrailingSlash;
+		return DEFAULT_API_BASE_URL;
 	}
 };
 
@@ -32,5 +45,10 @@ export const buildApiUrl = (endpoint: string): string => {
 	}
 
 	const normalizedEndpoint = endpoint.replace(/^\/+/, "");
-	return new URL(normalizedEndpoint, `${API_BASE_URL}/`).toString();
+
+	try {
+		return new URL(normalizedEndpoint, `${API_BASE_URL}/`).toString();
+	} catch {
+		return `/${normalizedEndpoint}`;
+	}
 };
