@@ -1,0 +1,14 @@
+venv/
+env/
+ENV/
+pycache/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+.env
+.env.*
+
+# Ignore logs and databases
+*.log
